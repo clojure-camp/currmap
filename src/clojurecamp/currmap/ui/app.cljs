@@ -169,7 +169,9 @@
               ^{:key (:resource/id resource)}
               [:div.resource {:tw "flex"}
                [:a {:tw "block grow"
-                    :href (:resource/url resource)}
+                    :href (:resource/url resource)
+                    :target "_blank"
+                    :rel "noopener noreferrer"}
                 (:resource/name resource)]
                [:div.rating
                 [:div {:tw "w-10"}
