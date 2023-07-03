@@ -49,7 +49,6 @@
 
 (defn compare-by-ratings
   [rating-values-a rating-values-b]
-  (println rating-values-a rating-values-b)
   (loop [rating-values-a rating-values-a
          rating-values-b rating-values-b]
     (let [median-a (median rating-values-a)
