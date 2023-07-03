@@ -2,8 +2,7 @@
   (:gen-class)
   (:require
     [bloom.omni.core :as omni]
-    [clojurecamp.currmap.omni-config :refer [omni-config]]
-    [clojurecamp.currmap.seed :as seed]))
+    [clojurecamp.currmap.omni-config :refer [omni-config]]))
 
 (defn start! []
   (omni/start! omni/system omni-config))
@@ -14,5 +13,4 @@
 (defn -main []
   (start!))
 
-#_(seed/seed!)
 #_(start!)

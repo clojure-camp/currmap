@@ -1,5 +1,7 @@
 (ns clojurecamp.currmap.domain.ratings
-  (:refer-clojure :exclude [sort]))
+  (:refer-clojure :exclude [sort])
+  (:require
+    [hyperfiddle.rcf :as rcf]))
 
 (def ->int
   {:rating.value/strong-no -6
@@ -26,26 +28,25 @@
          (nth ratings* (int (/ (count rating-values) 2)))]
         [(nth ratings* (int (/ (count rating-values) 2)))]))))
 
-(comment
-  (rcf/tests
-    "median empty"
-    (median [])
-    := []
-    "median one"
-    (median [:rating.value/weak-yes])
-    := [:rating.value/weak-yes]
-    "median two"
-    (median [:rating.value/weak-no :rating.value/weak-yes])
-    := [:rating.value/weak-no :rating.value/weak-yes]
-    "median three"
-    (median [:rating.value/weak-no :rating.value/weak-yes :rating.value/strong-no])
-    := [:rating.value/weak-no]
-    "median four"
-    (median [:rating.value/weak-yes :rating.value/weak-no :rating.value/weak-yes :rating.value/strong-no])
-    := [:rating.value/weak-no :rating.value/weak-yes]
-    "median five"
-    (median [:rating.value/weak-yes :rating.value/weak-no :rating.value/weak-no :rating.value/weak-yes :rating.value/strong-no])
-    := [:rating.value/weak-no]))
+(rcf/tests
+  "median empty"
+  (median [])
+  := nil
+  "median one"
+  (median [:rating.value/weak-yes])
+  := [:rating.value/weak-yes]
+  "median two"
+  (median [:rating.value/weak-no :rating.value/weak-yes])
+  := [:rating.value/weak-no :rating.value/weak-yes]
+  "median three"
+  (median [:rating.value/weak-no :rating.value/weak-yes :rating.value/strong-no])
+  := [:rating.value/weak-no]
+  "median four"
+  (median [:rating.value/weak-yes :rating.value/weak-no :rating.value/weak-yes :rating.value/strong-no])
+  := [:rating.value/weak-no :rating.value/weak-yes]
+  "median five"
+  (median [:rating.value/weak-yes :rating.value/weak-no :rating.value/weak-no :rating.value/weak-yes :rating.value/strong-no])
+  := [:rating.value/weak-no])
 
 (defn compare-by-ratings
   [rating-values-a rating-values-b]

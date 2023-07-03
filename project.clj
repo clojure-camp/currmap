@@ -13,7 +13,10 @@
   :repl-options {:init-ns clojurecamp.currmap.core
                  :timeout 200000}
 
-  :profiles {:uberjar
+  :profiles {:dev
+             {:source-paths ["dev-src"]
+              :dependencies [[com.hyperfiddle/rcf "20220926-202227"]]}
+             :uberjar
              {:aot :all
               :prep-tasks [["omni" "compile"]
                            "compile"]}})
