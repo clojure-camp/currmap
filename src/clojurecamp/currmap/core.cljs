@@ -1,13 +1,11 @@
 (ns ^:figwheel-hooks
   clojurecamp.currmap.core
   (:require
-   [reagent.dom :as rdom]
+   [bloom.omni.reagent :as rdom]
    [clojurecamp.currmap.ui.app :as app]))
 
 (defn render []
-  (rdom/render
-   [app/app-view]
-   (js/document.getElementById "app")))
+  (rdom/render [app/app-view]))
 
 (defn ^:export init []
   (render))

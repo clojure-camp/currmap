@@ -1,6 +1,8 @@
 (defproject clojurecamp.currmap "0.1.0-SNAPSHOT"
 
-  :dependencies [[io.bloomventures/omni "0.32.2"]]
+  :dependencies [[io.bloomventures/omni "0.32.2"]
+                 [datascript "1.4.2"]
+                 [denistakeda/posh "0.5.9"]]
 
   :plugins [[io.bloomventures/omni "0.32.2"]]
 
