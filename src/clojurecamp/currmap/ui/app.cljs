@@ -1,9 +1,9 @@
 (ns clojurecamp.currmap.ui.app
   (:require
-    [clojure.string :as string]
     [reagent.core :as r]
     [bloom.commons.fontawesome :as fa]
     [clojurecamp.currmap.state :as state]
+    [clojurecamp.currmap.ui.editor :as editor]
     [clojurecamp.currmap.domain.ratings :as ratings]))
 
 (def levels
@@ -79,7 +79,12 @@
            ^{:key (:topic/id topic)}
              [:tr {:tw "even:bg-gray-200"}
               [:td {:style {:padding-left (str (* (:depth topic) 1) "em")}}
-               (:topic/name topic)]
+               [:div.topic {:tw "group flex gap-1"}
+                [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
+                [:button {:tw "text-gray-600 invisible group-hover:visible"
+                          :on-click (fn []
+                                      (state/open-editor! [:topic/id (:topic/id topic)]))}
+                 [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]]]
               (let [outcomes-by-level (->> (:outcome/_topic topic)
                                            (group-by :outcome/level))
                     goals-by-level (->> (:goal/_topic topic)
@@ -102,7 +107,13 @@
                       (when goal
                         [:img {:title (:goal/description goal)
                                :src "/images/fa-portal-enter.svg"
-                               :tw "w-4"}])]])))])))]]])
+                               :tw "w-4"}])]])))])))
+     [:tr
+      [:td
+       [:button {:on-click (fn []
+                             #_(state/open-editor! )
+                             )}
+        "+"]]]]]])
 
 (def color-strong-no "#ad1724")
 (def color-weak-no "#df8877")
@@ -177,9 +188,15 @@
                 [:div {:tw "w-10"}
                  [rating-view (:resource/rating-values resource)]]]])))])))
 
+(defn entity-editor-view
+  []
+  (when-let [entity @state/active-form-entity]
+    [editor/editor-view entity]))
+
 (defn app-view []
   (when @state/ready?
     [:div {:tw "w-full flex"}
+     [entity-editor-view]
      [:div {:tw "w-4/6"}
       [main-table-view]]
      [:div {:tw "w-2/6"}

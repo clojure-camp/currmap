@@ -6,4 +6,10 @@
   [
    [[:get "/api/data"]
     (fn [_request]
-      {:body {:db (db/edn)}})]])
+      {:status 200
+       :body {:db (db/edn)}})]
+
+   [[:put "/api/data"]
+    (fn [request]
+      (db/overwrite-from-string! (get-in request [:body-params :db]))
+      {:status 200})]])

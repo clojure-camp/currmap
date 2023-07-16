@@ -9,16 +9,17 @@
 
 (defonce data (atom nil))
 
+(defn overwrite-from-string! [s]
+  (reset! data (-> (edn/read-string {:readers d/data-readers}
+                                    s)
+                   (d/conn-from-db))))
+
 (defn initialize-empty! []
   (reset! data
-          (d/create-conn schema/schema)))
+          (d/create-conn schema/datascript-schema)))
 
 (defn initialize-from-file! []
-  (reset! data
-          (-> (edn/read-string
-                {:readers d/data-readers}
-                (thread-safe/slurp (config/get :data-path)))
-              d/conn-from-db)))
+  (overwrite-from-string! (thread-safe/slurp (config/get :data-path))))
 
 (defn initialize! []
   (if (.exists (io/file (config/get :data-path)))
