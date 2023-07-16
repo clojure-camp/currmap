@@ -1,0 +1,42 @@
+(ns clojurecamp.currmap.db
+  (:require
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]
+    [bloom.commons.thread-safe-io :as thread-safe]
+    [datascript.core :as d]
+    [clojurecamp.currmap.config :as config]
+    [clojurecamp.currmap.schema :as schema]))
+
+(defonce data (atom nil))
+
+(defn initialize-empty! []
+  (reset! data
+          (d/create-conn schema/schema)))
+
+(defn initialize-from-file! []
+  (reset! data
+          (-> (edn/read-string
+                {:readers d/data-readers}
+                (thread-safe/slurp (config/get :data-path)))
+              d/conn-from-db)))
+
+(defn initialize! []
+  (if (.exists (io/file (config/get :data-path)))
+    (initialize-from-file!)
+    (initialize-empty!)))
+
+(defn edn
+  []
+  (-> @data
+      d/db
+      pr-str))
+
+(defn persist!
+  []
+  (thread-safe/spit
+    (config/get :data-path)
+    (edn)))
+
+#_(initialize-empty!)
+#_(persist!)
+#_(initialize-from-file!)

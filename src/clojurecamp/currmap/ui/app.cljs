@@ -178,8 +178,9 @@
                  [rating-view (:resource/rating-values resource)]]]])))])))
 
 (defn app-view []
-  [:div {:tw "w-full flex"}
-   [:div {:tw "w-4/6"}
-    [main-table-view]]
-   [:div {:tw "w-2/6"}
-    [sidebar-view]]])
+  (when @state/ready?
+    [:div {:tw "w-full flex"}
+     [:div {:tw "w-4/6"}
+      [main-table-view]]
+     [:div {:tw "w-2/6"}
+      [sidebar-view]]]))
