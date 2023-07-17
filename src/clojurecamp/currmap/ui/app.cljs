@@ -79,7 +79,8 @@
          (for [topic topics]
            ^{:key (:topic/id topic)}
              [:tr {:tw "even:bg-gray-200"}
-              [:td {:style {:padding-left (str (* (:depth topic) 1) "em")}}
+              [:td {:tw "align-top p-1"
+                    :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
                [:div.topic {:tw "group flex gap-1"}
                 [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
                 [:button {:tw "text-gray-600 invisible group-hover:visible"
@@ -102,14 +103,20 @@
                               goal (first (goals-by-level level))]]
                     ^{:key level}
                     [:<>
-                     [:td.level
-                      [:ul
+                     [:td.level {:tw "group align-top p-1 space-y-1"}
+                      [:ul {:tw "list-disc"}
                        (for [outcome outcomes]
                          ^{:key (:outcome/id outcome)}
                          [:li {:tw "cursor-pointer"
                                :on-click (fn []
                                            (reset! active-outcome-id (:outcome/id outcome)))}
-                          "- " (:outcome/name outcome)])]]
+                          [:div.outcome (:outcome/name outcome)]])]
+                      [:button {:tw "text-gray-600 invisible group-hover:visible"
+                                :on-click (fn []
+                                            (state/open-editor! (merge (schema/blank :outcome)
+                                                                       {:outcome/level level
+                                                                        :outcome/topic {:topic/id (:topic/id topic)}})))}
+                       [fa/fa-plus-solid {:tw "w-3 h-3"}]]]
                      [:td.goal
                       (when goal
                         [:img {:title (:goal/description goal)

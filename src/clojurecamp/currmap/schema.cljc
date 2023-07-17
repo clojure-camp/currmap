@@ -40,50 +40,57 @@
              :one :uuid
              :many [:uuid])
    :db/rel-entity-type entity-type
-   :db/input :input/rel
-   :db/user-editable? true})
+   :db/input :input/rel})
 
 (def schema
   {:topic
    {:topic/id id
     :topic/parent (rel :one :topic)
     :topic/name {:db/spec NonBlankString
-                 :db/input :input/text
-                 :db/user-editable? true}}
+                 :db/input :input/text}}
 
    :goal
    {:goal/id id
     :goal/topic (rel :one :topic)
     :goal/description {:db/spec [:maybe NonBlankString]
-                       :db/user-editable? true}
+                       :db/input :input/text}
     :goal/level {:db/spec Level
-                 :db/user-editable? true}}
+                 :db/input :input/radio}}
 
    :outcome
    {:outcome/id id
     :outcome/topic (rel :one :topic)
-    :outcome/name {:db/spec NonBlankString}
-    :outcome/description {:db/spec [:maybe NonBlankString]}
-    :outcome/level {:db/spec Level}}
+    :outcome/name {:db/spec NonBlankString
+                   :db/input :input/text}
+    :outcome/description {:db/spec [:maybe NonBlankString]
+                          :db/input :input/text}
+    :outcome/level {:db/spec Level
+                    :db/input :input/radio}}
 
    :resource
    {:resource/id id
     :resource/outcome (rel :many :outcome)
-    :resource/name {:db/spec NonBlankString}
-    :resource/url {:db/spec URL}
-    :resource/description {:db/spec [:maybe NonBlankString]}
-    :resource/type {:db/spec [:enum :resource.type/todo]}}
+    :resource/name {:db/spec NonBlankString
+                    :db/input :input/text}
+    :resource/url {:db/spec URL
+                   :db/input :input/text}
+    :resource/description {:db/spec [:maybe NonBlankString]
+                           :db/input :input/text}
+    :resource/type {:db/spec [:enum :resource.type/todo]
+                    :db/input :input/radio}}
 
    :rating
    {:rating/id id
     :rating/user (rel :one :user)
     :rating/resource (rel :one :resource)
     :rating/outcome (rel :one :outcome)
-    :rating/value {:db/spec RatingValue}}
+    :rating/value {:db/spec RatingValue
+                   :db/input :input/radio}}
 
    :user
    {:user/id id
-    :user/name {:db/spec NonBlankString}}})
+    :user/name {:db/spec NonBlankString
+                :db/input :input/text}}})
 
 (def datascript-schema
   (->> schema
