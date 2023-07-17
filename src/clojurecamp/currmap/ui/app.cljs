@@ -83,7 +83,7 @@
                 [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
                 [:button {:tw "text-gray-600 invisible group-hover:visible"
                           :on-click (fn []
-                                      (state/open-editor! [:topic/id (:topic/id topic)]))}
+                                      (state/open-editor! [:topic (:topic/id topic)]))}
                  [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]]]
               (let [outcomes-by-level (->> (:outcome/_topic topic)
                                            (group-by :outcome/level))
@@ -111,9 +111,8 @@
      [:tr
       [:td
        [:button {:on-click (fn []
-                             #_(state/open-editor! )
-                             )}
-        "+"]]]]]])
+                             (state/open-editor! [:topic :new]))}
+        "+ New Topic"]]]]]])
 
 (def color-strong-no "#ad1724")
 (def color-weak-no "#df8877")
@@ -190,8 +189,8 @@
 
 (defn entity-editor-view
   []
-  (when-let [entity @state/active-form-entity]
-    [editor/editor-view entity]))
+  (when-let [opts @state/editor-opts]
+    [editor/editor-view opts]))
 
 (defn app-view []
   (when @state/ready?

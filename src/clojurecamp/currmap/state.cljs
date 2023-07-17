@@ -1,11 +1,12 @@
 (ns clojurecamp.currmap.state
   (:require
-    [cljs.reader]
-    [reagent.core :as r]
     [bloom.commons.debounce :as debounce]
     [bloom.commons.ajax :as ajax]
+    [cljs.reader]
     [datascript.core :as d]
-    [posh.reagent :as posh]))
+    [reagent.core :as r]
+    [posh.reagent :as posh]
+    [clojurecamp.currmap.schema :as schema]))
 
 ;; core data, in datascript
 
@@ -41,8 +42,8 @@
     nil))
 
 (defn q
-  [pattern & args]
-  (apply posh/q pattern @data args))
+  [query & args]
+  (apply posh/q query @data args))
 
 (defn pull'
   [pattern [k v]]
@@ -66,17 +67,17 @@
 ;; misc ui stuff, regular reagent atoms
 
 (defonce state (r/atom
-                 {:db/editing-ident nil}))
+                 {:db/editing nil}))
 
 (defn open-editor!
-  [[_entity-id-key _entity-id :as e]]
-  (swap! state assoc :db/editing-ident e))
+  [[entity-type entity-id :as opts]]
+  (swap! state assoc :db/editing opts))
 
 (defn close-editor!
   []
-  (swap! state assoc :db/editing-ident nil))
+  (swap! state assoc :db/editing nil))
 
-(def active-form-entity (r/cursor state [:db/editing-ident]))
+(def editor-opts (r/cursor state [:db/editing]))
 
 (defn save-entity!
   [entity]

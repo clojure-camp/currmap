@@ -41,3 +41,4 @@
 #_(initialize-empty!)
 #_(persist!)
 #_(initialize-from-file!)
+#_(deref data)

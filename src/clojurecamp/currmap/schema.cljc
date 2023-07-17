@@ -1,13 +1,13 @@
 (ns clojurecamp.currmap.schema
   (:require
-    [clojure.string :as string]))
+    [bloom.commons.uuid :as uuid]
+    [clojure.string :as string]
+    [malli.generator :as mg]))
 
 ;; (WIP) malli specs
 
 (def NonBlankString
-  [:and
-   :string
-   (fn [s] (not (string/blank? s)))])
+  [:re #"\S+"])
 
 (def Level
   [:enum
@@ -25,70 +25,110 @@
 (def URL
   [:re #"https://.*"])
 
+(def id
+  {:db/type :db.type/uuid
+   :db/unique :db.unique/identity
+   :db/spec :uuid})
+
+(defn rel
+  [cardinality entity-type]
+  {:db/type :db.type/ref
+   :db/cardinality (case cardinality
+                    :one :db.cardinality/one
+                    :many :db.cardinality/many)
+   :db/spec (case cardinality
+             :one :uuid
+             :many [:uuid])
+   :db/rel-entity-type entity-type
+   :db/input :input/rel
+   :db/user-editable? true})
+
 (def schema
-  {:topic/id {:db/type :db.type/uuid
-              :db/unique :db.unique/identity}
-   :topic/parent {:db/type :db.type/ref
-                  :db/cardinality :db.cardinality/one
-                  :db/spec :uuid
-                  :db/domain :topic/id
-                  :db/input :input/id
-                  :db/user-editable? true}
-   :topic/name {:db/spec NonBlankString
-                :db/input :input/text
-                :db/user-editable? true}
+  {:topic
+   {:topic/id id
+    :topic/parent (rel :one :topic)
+    :topic/name {:db/spec NonBlankString
+                 :db/input :input/text
+                 :db/user-editable? true}}
 
-   :goal/id {:db/type :db.type/uuid
-             :db/unique :db.unique/identity}
-   :goal/topic {:db/type :db.type/ref
-                :db/cardinality :db.cardinality/one}
-   :goal/description {:db/spec [:maybe NonBlankString]
-                      :db/user-editable? true}
-   :goal/level {:db/spec Level
-                :db/user-editable? true}
+   :goal
+   {:goal/id id
+    :goal/topic (rel :one :topic)
+    :goal/description {:db/spec [:maybe NonBlankString]
+                       :db/user-editable? true}
+    :goal/level {:db/spec Level
+                 :db/user-editable? true}}
 
-   :outcome/id {:db/type :db.type/uuid
-                :db/unique :db.unique/identity}
-   :outcome/topic {:db/type :db.type/ref
-                   :db/cardinality :db.cardinality/one}
-   :outcome/name {:db/spec NonBlankString}
-   :outcome/description {:db/spec [:maybe NonBlankString]}
-   :outcome/level {:db/spec Level}
+   :outcome
+   {:outcome/id id
+    :outcome/topic (rel :one :topic)
+    :outcome/name {:db/spec NonBlankString}
+    :outcome/description {:db/spec [:maybe NonBlankString]}
+    :outcome/level {:db/spec Level}}
 
-   :resource/id {:db/type :db.type/uuid
-                 :db/unique :db.unique/identity}
-   :resource/outcome {:db/type :db.type/ref
-                      :db/cardinality :db.cardinality/many}
-   :resource/name {:db/spec NonBlankString}
-   :resource/url {:db/spec URL}
-   :resource/description {:db/spec [:maybe NonBlankString]}
-   :resource/type {}
+   :resource
+   {:resource/id id
+    :resource/outcome (rel :many :outcome)
+    :resource/name {:db/spec NonBlankString}
+    :resource/url {:db/spec URL}
+    :resource/description {:db/spec [:maybe NonBlankString]}
+    :resource/type {:db/spec [:enum :resource.type/todo]}}
 
-   :rating/id {:db/type :db.type/uuid
-               :db/unique :db.unique/identity}
-   :rating/user {:db/type :db.type/ref
-                 :db/cardinality :db.cardinality/one}
-   :rating/resource {:db/type :db.type/ref
-                     :db/cardinality :db.cardinality/one}
-   :rating/outcome {:db/type :db.type/ref
-                    :db/cardinality :db.cardinality/one}
-   :rating/value {:db/spec RatingValue}
+   :rating
+   {:rating/id id
+    :rating/user (rel :one :user)
+    :rating/resource (rel :one :resource)
+    :rating/outcome (rel :one :outcome)
+    :rating/value {:db/spec RatingValue}}
 
-   :user/id {:db/type :db.type/uuid
-             :db/unique :db.unique/identity}
-   :user/name {:db/spec NonBlankString}
-   })
+   :user
+   {:user/id id
+    :user/name {:db/spec NonBlankString}}})
 
 (def datascript-schema
-  schema)
-
-(def pattern-for
   (->> schema
-       (group-by (fn [[k _v]]
-                   (namespace k)))
-       (map (fn [[entity-type-string schema-entries]]
-              [entity-type-string
-               (->> schema-entries
-                   (mapv (fn [[k _v]]
-                          k)))]))
-       (into {})))
+       vals
+       (apply concat)
+       (into {})
+       ((fn [x]
+          (update-vals x #(select-keys % [:db/type
+                                          :db/cardinality
+                                          :db/unique]))))))
+
+(defn id-key-for
+  [entity-type]
+  (keyword (name entity-type) "id"))
+
+(defn name-key-for
+  [entity-type]
+  (keyword (name entity-type) "name"))
+
+(defn malli-spec-for
+  [entity-type]
+  (into [:map]
+        (->> (schema entity-type)
+             (map (fn [[k opts]]
+                    [k (:db/spec opts)])))))
+
+#_(malli-spec-for :goal)
+
+(defn pattern-for
+  ;; ex "goal" -> [:goal/id ...]
+  [entity-type]
+  (->> (schema entity-type)
+       (map (fn [[k opts]]
+              (cond
+                (= (:db/type opts) :db.type/ref)
+                {k [(id-key-for (:db/rel-entity-type opts))]}
+                :else
+                k)))))
+
+#_(pattern-for :goal)
+
+(defn blank
+  [entity-type]
+  (-> (zipmap (keys (schema entity-type))
+              (repeat nil))
+      (assoc (id-key-for entity-type) (uuid/random))))
+
+#_(blank :goal)

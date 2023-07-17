@@ -6,13 +6,13 @@
     [clojurecamp.currmap.db :as db]))
 
 (defn start! []
+  (db/initialize!)
   (omni/start! omni/system omni-config))
 
 (defn stop! []
   (omni/stop!))
 
 (defn -main []
-  (db/initialize!)
   (start!))
 
 #_(start!)
