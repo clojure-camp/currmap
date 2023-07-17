@@ -67,17 +67,23 @@
 ;; misc ui stuff, regular reagent atoms
 
 (defonce state (r/atom
-                 {:db/editing nil}))
+                 {:db/active-editor-entity nil}))
+
+(defn pull-for-editing
+  [[id-attr _id :as ident]]
+  (pull'
+    (schema/pattern-for (schema/attr->entity-type id-attr))
+    ident))
 
 (defn open-editor!
-  [[entity-type entity-id :as opts]]
-  (swap! state assoc :db/editing opts))
+  [starter-entity]
+  (swap! state assoc :db/active-editor-entity starter-entity))
 
 (defn close-editor!
   []
-  (swap! state assoc :db/editing nil))
+  (swap! state assoc :db/active-editor-entity nil))
 
-(def editor-opts (r/cursor state [:db/editing]))
+(def active-editor-entity (r/cursor state [:db/active-editor-entity]))
 
 (defn save-entity!
   [entity]

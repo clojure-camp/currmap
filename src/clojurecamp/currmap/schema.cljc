@@ -95,6 +95,14 @@
                                           :db/cardinality
                                           :db/unique]))))))
 
+(defn attr->entity-type
+  [attr]
+  (keyword (namespace attr)))
+
+(defn attr->schema
+  [attr]
+  (get-in schema [(attr->entity-type attr) attr]))
+
 (defn id-key-for
   [entity-type]
   (keyword (name entity-type) "id"))
@@ -107,8 +115,8 @@
   [entity-type]
   (into [:map]
         (->> (schema entity-type)
-             (map (fn [[k opts]]
-                    [k (:db/spec opts)])))))
+             (map (fn [[attr opts]]
+                    [attr (:db/spec opts)])))))
 
 #_(malli-spec-for :goal)
 
@@ -116,12 +124,12 @@
   ;; ex "goal" -> [:goal/id ...]
   [entity-type]
   (->> (schema entity-type)
-       (map (fn [[k opts]]
+       (map (fn [[attr opts]]
               (cond
                 (= (:db/type opts) :db.type/ref)
-                {k [(id-key-for (:db/rel-entity-type opts))]}
+                {attr [(id-key-for (:db/rel-entity-type opts))]}
                 :else
-                k)))))
+                attr)))))
 
 #_(pattern-for :goal)
 

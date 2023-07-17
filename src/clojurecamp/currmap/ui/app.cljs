@@ -4,7 +4,8 @@
     [bloom.commons.fontawesome :as fa]
     [clojurecamp.currmap.state :as state]
     [clojurecamp.currmap.ui.editor :as editor]
-    [clojurecamp.currmap.domain.ratings :as ratings]))
+    [clojurecamp.currmap.domain.ratings :as ratings]
+    [clojurecamp.currmap.schema :as schema]))
 
 (def levels
   [{:level/id :level/fundamentals
@@ -83,8 +84,14 @@
                 [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
                 [:button {:tw "text-gray-600 invisible group-hover:visible"
                           :on-click (fn []
-                                      (state/open-editor! [:topic (:topic/id topic)]))}
-                 [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]]]
+                                      (state/open-editor!
+                                       @(state/pull-for-editing [:topic/id (:topic/id topic)])))}
+                 [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]
+                [:button {:tw "text-gray-600 invisible group-hover:visible"
+                          :on-click (fn []
+                                      (state/open-editor! (merge (schema/blank :topic)
+                                                                  {:topic/parent {:topic/id (:topic/id topic)}})))}
+                 [fa/fa-plus-solid {:tw "w-3 h-3"}]]]]
               (let [outcomes-by-level (->> (:outcome/_topic topic)
                                            (group-by :outcome/level))
                     goals-by-level (->> (:goal/_topic topic)
@@ -111,7 +118,7 @@
      [:tr
       [:td
        [:button {:on-click (fn []
-                             (state/open-editor! [:topic :new]))}
+                             (state/open-editor! (schema/blank :topic)))}
         "+ New Topic"]]]]]])
 
 (def color-strong-no "#ad1724")
@@ -189,8 +196,8 @@
 
 (defn entity-editor-view
   []
-  (when-let [opts @state/editor-opts]
-    [editor/editor-view opts]))
+  (when-let [e @state/active-editor-entity]
+    [editor/editor-view e]))
 
 (defn app-view []
   (when @state/ready?

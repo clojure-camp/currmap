@@ -55,13 +55,8 @@
    (pr-str value)])
 
 (defn editor-view
-  [[entity-type entity-id]]
-  (r/with-let [entity (r/atom (if (= entity-id :new)
-                                (schema/blank entity-type)
-                                @(state/pull'
-                                   (schema/pattern-for entity-type)
-                                   [(schema/id-key-for entity-type)
-                                    entity-id])))]
+  [starter-entity]
+  (r/with-let [entity (r/atom starter-entity)]
     [:div.wrapper {:tw "absolute p-10 inset-1/4"}
      [:div.editor {:tw "bg-white border w-full h-full"}
       #_(pr-str @entity)
@@ -77,7 +72,7 @@
            [:tr
             [:td {:tw "p-1"} (pr-str k)]
             [:td [input-view
-                  {:schema (get-in schema/schema [entity-type k])
+                  {:schema (schema/attr->schema k)
                    :value v
                    :on-change (fn [new-value]
                                 (swap! entity assoc k new-value))}]]])]]
