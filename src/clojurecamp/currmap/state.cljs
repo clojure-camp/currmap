@@ -87,4 +87,7 @@
 
 (defn save-entity!
   [entity]
-  (transact! [entity]))
+  (transact! [(->> entity
+                   (filter (fn [[_k v]]
+                             v))
+                   (into {}))]))
