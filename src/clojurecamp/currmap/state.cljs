@@ -69,9 +69,9 @@
 (defonce state (r/atom
                  {:db/active-editor-entity nil}))
 
-(defn pull-for-editing
+(defn entity-for-editing
   [[id-attr _id :as ident]]
-  (pull'
+  @(pull'
     (schema/pattern-for (schema/attr->entity-type id-attr))
     ident))
 

@@ -86,7 +86,7 @@
                 [:button {:tw "text-gray-600 invisible group-hover:visible"
                           :on-click (fn []
                                       (state/open-editor!
-                                       @(state/pull-for-editing [:topic/id (:topic/id topic)])))}
+                                       (state/entity-for-editing [:topic/id (:topic/id topic)])))}
                  [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]
                 [:button {:tw "text-gray-600 invisible group-hover:visible"
                           :on-click (fn []
@@ -173,7 +173,12 @@
                                 [:outcome/id @active-outcome-id])]
        [:div.outcome
         [:div "Outcome"]
-        [:h1 (:outcome/name outcome)]
+        [:div {:tw "flex gap-1 group"}
+         [:h1 (:outcome/name outcome)]
+         [:button {:tw "text-gray-600 invisible group-hover:visible"
+                   :on-click (fn [_]
+                               (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}
+          [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]]
         [:h2 "Resources"]
         (let [resources-with-rating-values (->> (:resource/_outcome outcome)
                                                 (map (fn [resource]
