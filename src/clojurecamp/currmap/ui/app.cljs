@@ -196,12 +196,16 @@
           (doall
             (for [resource (ratings/sort :resource/rating-values resources-with-rating-values)]
               ^{:key (:resource/id resource)}
-              [:div.resource {:tw "flex"}
+              [:div.resource {:tw "flex gap-1 group"}
                [:a {:tw "block grow"
                     :href (:resource/url resource)
                     :target "_blank"
                     :rel "noopener noreferrer"}
                 (:resource/name resource)]
+               [:button {:tw "text-gray-600 invisible group-hover:visible"
+                         :on-click (fn [_]
+                                     (state/open-editor! (state/entity-for-editing [:resource/id (:resource/id resource)])))}
+                [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]
                [:div.rating
                 [:div {:tw "w-10"}
                  [rating-view (:resource/rating-values resource)]]]])))])))

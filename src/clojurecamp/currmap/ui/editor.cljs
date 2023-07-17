@@ -32,22 +32,34 @@
         str-hash (fn [x] (str (hash x)))
         hash->value (zipmap (map str-hash (map first options))
                             (map first options))]
-    [:select {:tw "border border-gray-500 p-1"
-              :default-value (case (:db/cardinality schema)
-                               :db.cardinality/one
-                               (str-hash value)
-                               :db.cardinality/many
-                               (map str-hash value))
-              :on-change (fn [e]
-                           (case (:db/cardinality schema)
-                             :db.cardinality/one
-                             (on-change (hash->value (.. e -target -value)))
-                             :db.cardinality/many
-                             (js/alert "TODO")))}
-     [:option {:value "nil"} ""]
-     (for [[value label] options]
-       ^{:key (str-hash value)}
-       [:option {:value (str-hash value)} label])]))
+    [:div
+     [:select {:tw "border border-gray-500 p-1"
+               :default-value (case (:db/cardinality schema)
+                                :db.cardinality/one
+                                (str-hash value)
+                                :db.cardinality/many
+                                (map str-hash value))
+               :multiple (case (:db/cardinality schema)
+                           :db.cardinality/one
+                           false
+                           :db.cardinality/many
+                           true)
+               :on-change (fn [e]
+                            (case (:db/cardinality schema)
+                              :db.cardinality/one
+                              (on-change (hash->value (.. e -target -value)))
+                              :db.cardinality/many
+                              (->> (.. e -target -selectedOptions)
+                                   (map (fn [o] (hash->value (.-value o))))
+                                   (on-change))))}
+      (when (= :db/cardinality.one (:db/cardinality schema))
+        [:option {:value "nil"} ""])
+      (for [[value label] options]
+        ^{:key (str-hash value)}
+        [:option {:value (str-hash value)} label])]
+     (when (= :db.cardinality/many (:db/cardinality schema))
+       [:div {:tw "text-xs text-gray-500"}
+       "(Hold ⌘ when clicking)"])]))
 
 (defmethod input-view :default
   [{:keys [schema value]}]
