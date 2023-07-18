@@ -7,6 +7,12 @@
     [clojurecamp.currmap.domain.ratings :as ratings]
     [clojurecamp.currmap.schema :as schema]))
 
+(defn icon-button-view
+  [opts]
+  [:button (merge opts
+                  {:tw "text-gray-500 hover:text-black invisible group-hover:visible"})
+   [(:icon opts) {:tw "w-3 h-3"}]])
+
 (def levels
   [{:level/id :level/fundamentals
     :level/name "Fundamentals"
@@ -83,16 +89,16 @@
                     :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
                [:div.topic {:tw "group flex gap-1"}
                 [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
-                [:button {:tw "text-gray-600 invisible group-hover:visible"
-                          :on-click (fn []
-                                      (state/open-editor!
-                                       (state/entity-for-editing [:topic/id (:topic/id topic)])))}
-                 [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]
-                [:button {:tw "text-gray-600 invisible group-hover:visible"
-                          :on-click (fn []
-                                      (state/open-editor! (merge (schema/blank :topic)
-                                                                  {:topic/parent {:topic/id (:topic/id topic)}})))}
-                 [fa/fa-plus-solid {:tw "w-3 h-3"}]]]]
+                [icon-button-view
+                 {:icon fa/fa-pencil-alt-solid
+                  :on-click (fn []
+                              (state/open-editor!
+                                (state/entity-for-editing [:topic/id (:topic/id topic)])))}]
+                [icon-button-view
+                 {:icon fa/fa-plus-solid
+                  :on-click (fn []
+                              (state/open-editor! (merge (schema/blank :topic)
+                                                         {:topic/parent {:topic/id (:topic/id topic)}})))}]]]
               (let [outcomes-by-level (->> (:outcome/_topic topic)
                                            (group-by :outcome/level))
                     goals-by-level (->> (:goal/_topic topic)
@@ -111,12 +117,12 @@
                                :on-click (fn []
                                            (reset! active-outcome-id (:outcome/id outcome)))}
                           [:div.outcome (:outcome/name outcome)]])]
-                      [:button {:tw "text-gray-600 invisible group-hover:visible"
-                                :on-click (fn []
-                                            (state/open-editor! (merge (schema/blank :outcome)
-                                                                       {:outcome/level level
-                                                                        :outcome/topic {:topic/id (:topic/id topic)}})))}
-                       [fa/fa-plus-solid {:tw "w-3 h-3"}]]]
+                      [icon-button-view
+                       {:icon fa/fa-plus-solid
+                        :on-click (fn []
+                                    (state/open-editor! (merge (schema/blank :outcome)
+                                                               {:outcome/level level
+                                                                :outcome/topic {:topic/id (:topic/id topic)}})))}]]
                      [:td.goal
                       (when goal
                         [:img {:title (:goal/description goal)
@@ -175,10 +181,10 @@
         [:div "Outcome"]
         [:div {:tw "flex gap-1 group"}
          [:h1 (:outcome/name outcome)]
-         [:button {:tw "text-gray-600 invisible group-hover:visible"
-                   :on-click (fn [_]
-                               (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}
-          [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]]
+         [icon-button-view
+          {:icon fa/fa-pencil-alt-solid
+           :on-click (fn [_]
+                       (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}]]
         [:h2 "Resources"]
         (let [resources-with-rating-values
               (->> (:resource/_outcome outcome)
@@ -205,10 +211,10 @@
                     :target "_blank"
                     :rel "noopener noreferrer"}
                 (:resource/name resource)]
-               [:button {:tw "text-gray-600 invisible group-hover:visible"
-                         :on-click (fn [_]
-                                     (state/open-editor! (state/entity-for-editing [:resource/id (:resource/id resource)])))}
-                [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]
+               [icon-button-view
+                {:icon fa/fa-pencil-alt-solid
+                 :on-click (fn [_]
+                             (state/open-editor! (state/entity-for-editing [:resource/id (:resource/id resource)])))}]
                (let [user-rating-id @(state/q '[:find ?rating-id .
                                                 :in $ ?resource-id ?outcome-id ?user-id
                                                 :where
@@ -231,19 +237,20 @@
                  [:div.rate {:tw "inline-flex items-center gap-1 mr-1"}
                   (for [value ratings/ratings]
                     ^{:key value}
-                    [:button {:on-click (fn []
-                                          (state/save-entity!
-                                            (merge (schema/blank :rating)
-                                                   user-rating ;; if there is a rating, use its :rating/id
-                                                   {:rating/user [:user/id (:user/id @state/user)]
-                                                    :rating/resource [:resource/id (:resource/id resource)]
-                                                    :rating/outcome [:outcome/id (:outcome/id outcome)]
-                                                    :rating/value value})))}
-                     [(->icon value)
-                      {:tw ["w-3 h-3 hover:text-black"
-                            (if (= value (:rating/value user-rating))
-                              "text-blue-500"
-                              "text-gray-500 invisible group-hover:visible")]}]])])])))])))
+                    [icon-button-view
+                     {:icon (->icon value)
+                      ;; girouette doesn't support !important modifier
+                      :style (when (= value (:rating/value user-rating))
+                               {:color (rating->color value)
+                                :visibility "visible"})
+                      :on-click (fn []
+                                  (state/save-entity!
+                                    (merge (schema/blank :rating)
+                                           user-rating ;; if there is a rating, use its :rating/id
+                                           {:rating/user [:user/id (:user/id @state/user)]
+                                            :rating/resource [:resource/id (:resource/id resource)]
+                                            :rating/outcome [:outcome/id (:outcome/id outcome)]
+                                            :rating/value value})))}])])])))])))
 
 (defn entity-editor-view
   []
