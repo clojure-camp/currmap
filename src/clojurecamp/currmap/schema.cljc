@@ -8,10 +8,10 @@
 
 (def Email
   ;; TODO could be better
-  [:re #".*@.*\..*"])
+  [:re {:error/message "should be an email"} #".*@.*\..*"])
 
 (def NonBlankString
-  [:re #"\S+"])
+  [:re {:error/message "should not be blank"} #"\S+"])
 
 (def Level
   [:enum
@@ -27,7 +27,7 @@
    :rating.value/strong-yes])
 
 (def URL
-  [:re #"https://.*"])
+  [:re {:error/message "should be a link, starting with https://"} #"https://.*"])
 
 (def id
   {:db/type :db.type/uuid
@@ -40,9 +40,16 @@
    :db/cardinality (case cardinality
                     :one :db.cardinality/one
                     :many :db.cardinality/many)
-   :db/spec (case cardinality
-             :one :uuid
-             :many [:uuid])
+   :db/spec (let [r [:map-of {:error/message "should be a related entity"}
+                     [:and
+                      :keyword
+                      [:= (keyword
+                            (name entity-type)
+                            "id")]]
+                     :uuid]]
+              (case cardinality
+                :one r
+                :many [:vector {:min 1} r]))
    :db/rel-entity-type entity-type
    :db/input :input/rel})
 
@@ -79,9 +86,7 @@
     :resource/url {:db/spec URL
                    :db/input :input/text}
     :resource/description {:db/spec [:maybe NonBlankString]
-                           :db/input :input/text}
-    #_#_:resource/type {:db/spec [:enum :resource.type/todo]
-                        :db/input :input/radio}}
+                           :db/input :input/text}}
 
    :rating
    {:rating/id id
@@ -108,6 +113,12 @@
 (defn attr->entity-type
   [attr]
   (keyword (namespace attr)))
+
+(defn entity->entity-type
+  [entity]
+  (attr->entity-type (key (first entity))))
+
+#_(entity->entity-type {:topic/id "123"})
 
 (defn attr->schema
   [attr]

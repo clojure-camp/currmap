@@ -61,8 +61,7 @@
     :resource/description "TODO"
     :resource/outcome [[:outcome/id (id "outcome-loop")]
                        [:outcome/id (id "outcome-refs")]
-                       [:outcome/id (id "outcome-macro")]]
-    :resource/type :resource.type/todo}
+                       [:outcome/id (id "outcome-macro")]]}
 
    {:resource/id (id "resource-other")
     :resource/name "other resource"
@@ -70,8 +69,7 @@
     :resource/description "TODO"
     :resource/outcome [[:outcome/id (id "outcome-loop")]
                        [:outcome/id (id "outcome-refs")]
-                       [:outcome/id (id "outcome-macro")]]
-    :resource/type :resource.type/todo}
+                       [:outcome/id (id "outcome-macro")]]}
 
    {:resource/id (id "resource-three")
     :resource/name "third resource"
@@ -79,8 +77,7 @@
     :resource/description "TODO"
     :resource/outcome [[:outcome/id (id "outcome-loop")]
                        [:outcome/id (id "outcome-refs")]
-                       [:outcome/id (id "outcome-macro")]]
-    :resource/type :resource.type/todo}
+                       [:outcome/id (id "outcome-macro")]]}
 
    {:resource/id (id "resource-four")
     :resource/name "fourth resource"
@@ -88,14 +85,13 @@
     :resource/description "TODO"
     :resource/outcome [[:outcome/id (id "outcome-loop")]
                        [:outcome/id (id "outcome-refs")]
-                       [:outcome/id (id "outcome-macro")]]
-    :resource/type :resource.type/todo}
+                       [:outcome/id (id "outcome-macro")]]}
 
    {:user/id (id "user-alice")
-    :user/name "Alice"}
+    :user/email "alice@example.com"}
 
    {:user/id (id "user-bob")
-    :user/name "Bob"}
+    :user/email "bob@example.com"}
 
    {:rating/id (id "rating-1")
     :rating/user [:user/id (id "user-alice")]

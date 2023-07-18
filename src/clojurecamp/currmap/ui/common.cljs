@@ -10,6 +10,7 @@
   [{variant :variant :as opts :or {variant :primary}}]
   [:button (merge (dissoc opts :label :icon :variant)
                   {:tw ["flex text-sm items-center px-2 py-1 gap-1 "
+                        "disabled:cursor-not-allowed disabled:line-through disabled:bg-gray-800 disabled:hover:bg-gray-800"
                         (case variant
                           :primary
                           "text-white bg-blue-500 hover:bg-blue-800 active:bg-black"

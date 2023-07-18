@@ -2,6 +2,8 @@
   (:require
     [reagent.core :as r]
     [bloom.commons.fontawesome :as fa]
+    [malli.core :as m]
+    [malli.error :as me]
     [clojurecamp.currmap.ui.common :as ui]
     [clojurecamp.currmap.state :as state]
     [clojurecamp.currmap.schema :as schema]))
@@ -28,7 +30,13 @@
                                  [?e ?name-key ?name]]
                                id-key name-key)
                      (map (fn [[id label]]
-                            [{id-key id} label])))
+                            [{id-key id} label]))
+                     ((fn [x]
+                        (case (:db/cardinality schema)
+                          :db.cardinality/one
+                          (conj x [nil ""])
+                          :db.cardinality/many
+                          (identity x)))))
         ;; going through this hashing hoop to effectively allow for object values
         ;; b/c :value on option gets cast to string
         str-hash (fn [x] (str (hash x)))
@@ -52,7 +60,7 @@
                               (on-change (hash->value (.. e -target -value)))
                               :db.cardinality/many
                               (->> (.. e -target -selectedOptions)
-                                   (map (fn [o] (hash->value (.-value o))))
+                                   (mapv (fn [o] (hash->value (.-value o))))
                                    (on-change))))}
       (when (= :db/cardinality.one (:db/cardinality schema))
         [:option {:value "nil"} ""])
@@ -71,32 +79,42 @@
 (defn editor-view
   [starter-entity]
   (r/with-let [entity (r/atom starter-entity)]
-    [:div.wrapper {:tw "absolute p-10 inset-1/4"}
-     [:div.editor {:tw "bg-white border w-full h-full"}
-      #_(pr-str @entity)
-      [:form {:tw "flex flex-col h-full"
-              :on-submit (fn [e]
-                           (.preventDefault e)
-                           (state/save-entity! @entity)
-                           (state/close-editor!))}
-       [:table
-        [:tbody
-         (for [[k v] @entity]
-           ^{:key k}
-           [:tr
-            [:td {:tw "p-1"} (pr-str k)]
-            [:td [input-view
-                  {:schema (schema/attr->schema k)
-                   :value v
-                   :on-change (fn [new-value]
-                                (swap! entity assoc k new-value))}]]])]]
-       [:div.gap {:tw "grow"}]
-       [:div {:tw "flex justify-between"}
-        [ui/text-button
-         {:label "Cancel"
-          :variant :secondary
-          :type "button"
-          :on-click (fn []
-                      (state/close-editor!))}]
-        [ui/text-button
-         {:label "Save"}]]]]]))
+    (let [errors (me/humanize (m/explain (schema/malli-spec-for
+                                           (schema/entity->entity-type @entity))
+                                         @entity))]
+      [:div.wrapper {:tw "absolute p-10 inset-1/4"}
+       [:form.editor
+        {:tw "bg-white border flex flex-col w-full h-full"
+         :on-submit (fn [e]
+                      (.preventDefault e)
+                      (state/save-entity! @entity)
+                      (state/close-editor!))}
+        #_[:div {} (pr-str @entity)]
+        #_[:div {} (pr-str errors)]
+        [:table
+         [:tbody
+          (for [[k v] @entity]
+            ^{:key k}
+            [:tr
+             [:td {:tw "p-1 align-top"} (pr-str k)]
+             [:td
+              [input-view
+               {:schema (schema/attr->schema k)
+                :value v
+                :on-change (fn [new-value]
+                             (swap! entity assoc k new-value))}]
+              (when-let [error (get errors k)]
+                [:div.error {:tw "text-red-500 flex items-center gap-1"}
+                 [fa/fa-exclamation-triangle-solid {:tw "w-4 h-4"}]
+                 (first error)])]])]]
+        [:div.gap {:tw "grow"}]
+        [:div {:tw "flex justify-between"}
+         [ui/text-button
+          {:label "Cancel"
+           :variant :secondary
+           :type "button"
+           :on-click (fn []
+                       (state/close-editor!))}]
+         [ui/text-button
+          {:label "Save"
+           :disabled (seq errors)}]]]])))
