@@ -38,6 +38,14 @@
     (config/get :data-path)
     (edn)))
 
+(defn q
+  [query & args]
+  (apply d/q query @@data args))
+
+(defn transact!
+  [& args]
+  (apply d/transact! @data args))
+
 #_(initialize-empty!)
 #_(persist!)
 #_(initialize-from-file!)

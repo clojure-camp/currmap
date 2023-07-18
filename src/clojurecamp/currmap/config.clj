@@ -9,7 +9,17 @@
    [:environment [:enum :dev :prod]]
    [:auth-cookie-secret string?]
    [:auth-token-secret string?]
-   [:data-path string?]])
+   [:data-path string?]
+   [:website-base-url string?]
+   [:smtp-credentials
+    {:optional true}
+    [:map
+     [:port integer?]
+     [:host string?]
+     [:tls boolean?]
+     [:from string?]
+     [:user string?]
+     [:pass string?]]]])
 
 (def config
   (delay (config/read "config.edn" schema)))

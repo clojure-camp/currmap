@@ -28,18 +28,11 @@
 
 (def debounced-persist! (debounce/debounce persist! 500))
 
-(defonce _
-  (do
-    (ajax/request
-      {:uri "/api/data"
-       :method :get
-       :on-success (fn [{:keys [db]}]
-                     (reset! data
-                             (d/conn-from-db (cljs.reader/read-string db)))
-                     (posh/posh! @data)
-
-                     (d/listen! @data ::persist debounced-persist!))})
-    nil))
+(defn initialize-db! [db-string]
+  (reset! data
+          (d/conn-from-db (cljs.reader/read-string db-string)))
+  (posh/posh! @data)
+  (d/listen! @data ::persist debounced-persist!))
 
 (defn q
   [query & args]
@@ -68,7 +61,28 @@
 
 (defonce state (r/atom
                  {:db/active-editor-entity nil
-                  :db/user {:user/id #uuid "b5048daf-1230-46b1-adcb-89bc5369bc91"}}))
+                  :db/user nil}))
+
+(defn authenticate!
+  [email]
+  (ajax/request
+    {:uri "/api/request-auth"
+     :method :put
+     :params {:email email}
+     :on-success (fn []
+                   (js/alert "A log in link has been sent. Check your email."))
+     :on-error (fn []
+                 (js/alert "Auth error."))}))
+
+(defn log-out!
+  []
+  (ajax/request
+    {:uri "/api/session"
+     :method :delete
+     :on-success (fn []
+                   (swap! state assoc :db/user nil))
+     :on-error (fn []
+                 (js/alert "Auth error."))}))
 
 (defn entity-for-editing
   [[id-attr _id :as ident]]
@@ -93,3 +107,14 @@
                    (filter (fn [[_k v]]
                              v))
                    (into {}))]))
+
+(defonce _
+  (do
+    (ajax/request
+      {:uri "/api/data"
+       :method :get
+       :on-success (fn [{:keys [db user-id]}]
+                     (initialize-db! db)
+                     (when user-id
+                       (swap! state assoc :db/user {:user/id user-id})))})
+    nil))

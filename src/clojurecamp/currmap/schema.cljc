@@ -6,6 +6,10 @@
 
 ;; (WIP) malli specs
 
+(def Email
+  ;; TODO could be better
+  [:re #".*@.*\..*"])
+
 (def NonBlankString
   [:re #"\S+"])
 
@@ -89,8 +93,7 @@
 
    :user
    {:user/id id
-    :user/name {:db/spec NonBlankString
-                :db/input :input/text}}})
+    :user/email {:db/spec Email}}})
 
 (def datascript-schema
   (->> schema

@@ -3,6 +3,7 @@
   :dependencies [[io.bloomventures/omni "0.32.2"]
                  [datascript "1.4.2"]
                  [metosin/malli "0.11.0"]
+                 [com.draines/postal "2.0.3"]
                  [denistakeda/posh "0.5.9"]]
 
   :plugins [[io.bloomventures/omni "0.32.2"]]

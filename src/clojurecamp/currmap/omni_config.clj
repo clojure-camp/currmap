@@ -9,8 +9,8 @@
    :omni/environment (config/get :environment)
    :omni/cljs {:main "clojurecamp.currmap.core"}
    :omni/css {:tailwind? true}
-   :omni/auth (-> {:cookie {:name "clojurecamp-currmap"
-                            :secret (config/get :auth-cookie-secret)}
-                   :token {:secret (config/get :auth-token-secret)}})
+   :omni/auth {:cookie {:name "clojurecamp-currmap"
+                        :secret (config/get :auth-cookie-secret)}
+               :token {:secret (config/get :auth-token-secret)}}
    :omni/api-routes #'routes/routes})
 

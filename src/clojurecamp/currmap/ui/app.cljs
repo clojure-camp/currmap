@@ -280,10 +280,25 @@
   (when-let [e @state/active-editor-entity]
     [editor/editor-view e]))
 
+(defn auth-view
+  []
+  (if @state/user
+    [ui/text-button
+     {:label "Log Out"
+      :on-click (fn []
+                  (state/log-out!))}]
+    [ui/text-button
+     {:label "Log In"
+      :on-click (fn []
+                  (when-let [email (js/prompt "Please enter your email:")]
+                    (state/authenticate! email)))}]))
+
 (defn app-view []
   (when @state/ready?
     [:div {:tw "w-full flex"}
      [entity-editor-view]
+     [:div {:tw "absolute top-0 right-0"}
+      [auth-view]]
      [:div {:tw "w-4/6"}
       [main-table-view]]
      [:div {:tw "w-2/6"}
