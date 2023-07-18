@@ -197,10 +197,10 @@
           (doall
             (for [resource (ratings/sort :resource/rating-values resources-with-rating-values)]
               ^{:key (:resource/id resource)}
-              [:div.resource {:tw "flex gap-1 group align-middle"}
-               [:div.rating {:tw "w-10 group"}
+              [:div.resource {:tw "group flex gap-2 items-center"}
+               [:div.rating {:tw "w-10 h-3"}
                 [rating-view (:resource/rating-values resource)]]
-               [:a {:tw "block grow"
+               [:a {:tw "block grow underline"
                     :href (:resource/url resource)
                     :target "_blank"
                     :rel "noopener noreferrer"}
@@ -223,8 +223,12 @@
                                               (:outcome/id outcome)
                                               (:user/id @state/user))
                      user-rating @(state/pull' [:rating/id :rating/value]
-                                               [:rating/id user-rating-id])]
-                 [:div.rate {:tw "flex align-middle gap-1"}
+                                               [:rating/id user-rating-id])
+                     ->icon {:rating.value/strong-no fa/fa-poop-solid
+                             :rating.value/weak-no fa/fa-thumbs-down-solid
+                             :rating.value/weak-yes fa/fa-thumbs-up-solid
+                             :rating.value/strong-yes fa/fa-star-solid}]
+                 [:div.rate {:tw "inline-flex items-center gap-1 mr-1"}
                   (for [value ratings/ratings]
                     ^{:key value}
                     [:button {:on-click (fn []
@@ -235,14 +239,11 @@
                                                     :rating/resource [:resource/id (:resource/id resource)]
                                                     :rating/outcome [:outcome/id (:outcome/id outcome)]
                                                     :rating/value value})))}
-                     [({:rating.value/strong-no fa/fa-poop-solid
-                        :rating.value/weak-no fa/fa-thumbs-down-solid
-                        :rating.value/weak-yes fa/fa-thumbs-up-solid
-                        :rating.value/strong-yes fa/fa-star-solid} value)
+                     [(->icon value)
                       {:tw ["w-3 h-3 hover:text-black"
                             (if (= value (:rating/value user-rating))
                               "text-blue-500"
-                              "text-gray-500")]}]])])])))])))
+                              "text-gray-500 invisible group-hover:visible")]}]])])])))])))
 
 (defn entity-editor-view
   []
