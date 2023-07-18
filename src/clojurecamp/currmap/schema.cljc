@@ -80,8 +80,8 @@
                    :db/input :input/text}
     :resource/description {:db/spec [:maybe NonBlankString]
                            :db/input :input/text}
-    :resource/type {:db/spec [:enum :resource.type/todo]
-                    :db/input :input/radio}}
+    #_#_:resource/type {:db/spec [:enum :resource.type/todo]
+                        :db/input :input/radio}}
 
    :rating
    {:rating/id id
