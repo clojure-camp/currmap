@@ -180,23 +180,26 @@
                                (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}
           [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]]
         [:h2 "Resources"]
-        (let [resources-with-rating-values (->> (:resource/_outcome outcome)
-                                                (map (fn [resource]
-                                                       (assoc resource :resource/rating-values
-                                                         @(state/q '[:find [?value ...]
-                                                                     :in $ ?resource-id ?outcome-id
-                                                                     :where
-                                                                     [?r-eid :resource/id ?resource-id]
-                                                                     [?o-eid :outcome/id ?outcome-id]
-                                                                     [?r :rating/resource ?r-eid]
-                                                                     [?r :rating/outcome ?o-eid]
-                                                                     [?r :rating/value ?value]]
-                                                                   (:resource/id resource)
-                                                                   (:outcome/id outcome))))))]
+        (let [resources-with-rating-values
+              (->> (:resource/_outcome outcome)
+                   (map (fn [resource]
+                          (assoc resource :resource/rating-values
+                            @(state/q '[:find [?value ...]
+                                        :in $ ?resource-id ?outcome-id
+                                        :where
+                                        [?r-eid :resource/id ?resource-id]
+                                        [?o-eid :outcome/id ?outcome-id]
+                                        [?r :rating/resource ?r-eid]
+                                        [?r :rating/outcome ?o-eid]
+                                        [?r :rating/value ?value]]
+                                      (:resource/id resource)
+                                      (:outcome/id outcome))))))]
           (doall
             (for [resource (ratings/sort :resource/rating-values resources-with-rating-values)]
               ^{:key (:resource/id resource)}
-              [:div.resource {:tw "flex gap-1 group"}
+              [:div.resource {:tw "flex gap-1 group align-middle"}
+               [:div.rating {:tw "w-10 group"}
+                [rating-view (:resource/rating-values resource)]]
                [:a {:tw "block grow"
                     :href (:resource/url resource)
                     :target "_blank"
@@ -206,9 +209,40 @@
                          :on-click (fn [_]
                                      (state/open-editor! (state/entity-for-editing [:resource/id (:resource/id resource)])))}
                 [fa/fa-pencil-alt-solid {:tw "w-3 h-3"}]]
-               [:div.rating
-                [:div {:tw "w-10"}
-                 [rating-view (:resource/rating-values resource)]]]])))])))
+               (let [user-rating-id @(state/q '[:find ?rating-id .
+                                                :in $ ?resource-id ?outcome-id ?user-id
+                                                :where
+                                                [?resource-eid :resource/id ?resource-id]
+                                                [?outcome-eid :outcome/id ?outcome-id]
+                                                [?user-eid :user/id ?user-id]
+                                                [?rating-eid :rating/user ?user-eid]
+                                                [?rating-eid :rating/resource ?resource-eid]
+                                                [?rating-eid :rating/outcome ?outcome-eid]
+                                                [?rating-eid :rating/id ?rating-id]]
+                                              (:resource/id resource)
+                                              (:outcome/id outcome)
+                                              (:user/id @state/user))
+                     user-rating @(state/pull' [:rating/id :rating/value]
+                                               [:rating/id user-rating-id])]
+                 [:div.rate {:tw "flex align-middle gap-1"}
+                  (for [value ratings/ratings]
+                    ^{:key value}
+                    [:button {:on-click (fn []
+                                          (state/save-entity!
+                                            (merge (schema/blank :rating)
+                                                   user-rating ;; if there is a rating, use its :rating/id
+                                                   {:rating/user [:user/id (:user/id @state/user)]
+                                                    :rating/resource [:resource/id (:resource/id resource)]
+                                                    :rating/outcome [:outcome/id (:outcome/id outcome)]
+                                                    :rating/value value})))}
+                     [({:rating.value/strong-no fa/fa-poop-solid
+                        :rating.value/weak-no fa/fa-thumbs-down-solid
+                        :rating.value/weak-yes fa/fa-thumbs-up-solid
+                        :rating.value/strong-yes fa/fa-star-solid} value)
+                      {:tw ["w-3 h-3 hover:text-black"
+                            (if (= value (:rating/value user-rating))
+                              "text-blue-500"
+                              "text-gray-500")]}]])])])))])))
 
 (defn entity-editor-view
   []

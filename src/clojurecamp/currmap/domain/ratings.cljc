@@ -3,6 +3,12 @@
   (:require
     [hyperfiddle.rcf :as rcf]))
 
+(def ratings
+  [:rating.value/strong-no
+   :rating.value/weak-no
+   :rating.value/weak-yes
+   :rating.value/strong-yes])
+
 (def ->int
   {:rating.value/strong-no -6
    :rating.value/weak-no -2

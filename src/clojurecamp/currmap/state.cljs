@@ -67,7 +67,8 @@
 ;; misc ui stuff, regular reagent atoms
 
 (defonce state (r/atom
-                 {:db/active-editor-entity nil}))
+                 {:db/active-editor-entity nil
+                  :db/user {:user/id #uuid "b5048daf-1230-46b1-adcb-89bc5369bc91"}}))
 
 (defn entity-for-editing
   [[id-attr _id :as ident]]
@@ -84,6 +85,7 @@
   (swap! state assoc :db/active-editor-entity nil))
 
 (def active-editor-entity (r/cursor state [:db/active-editor-entity]))
+(def user (r/cursor state [:db/user]))
 
 (defn save-entity!
   [entity]
