@@ -202,6 +202,7 @@
            [:div "Would you recommend this resource to someone trying to learn " [:strong (:outcome/name outcome)] "?"]
            [:div
             (for [rating ratings/ratings]
+              ^{:key rating}
               [:div {:tw "flex items-center gap-1"}
                [(rating->icon rating) {:tw "w-3 h-3"
                                        :style {:color (rating->color rating)}}]
