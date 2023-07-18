@@ -2,7 +2,7 @@
 
 (defn icon-button
   [opts]
-  [:button (merge opts
+  [:button (merge (dissoc opts :icon)
                   {:tw "text-gray-500 hover:text-black invisible group-hover:visible"})
    [(:icon opts) {:tw "w-3 h-3"}]])
 
