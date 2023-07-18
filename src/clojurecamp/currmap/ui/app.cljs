@@ -146,6 +146,18 @@
    :rating.value/weak-yes color-weak-yes
    :rating.value/strong-yes color-strong-yes})
 
+(def rating->icon
+  {:rating.value/strong-no fa/fa-poop-solid
+   :rating.value/weak-no fa/fa-thumbs-down-solid
+   :rating.value/weak-yes fa/fa-thumbs-up-solid
+   :rating.value/strong-yes fa/fa-star-solid})
+
+(def rating->label
+  {:rating.value/strong-no "No!"
+   :rating.value/weak-no "Meh"
+   :rating.value/weak-yes "It's okay"
+   :rating.value/strong-yes "Yes!!!"})
+
 (defn rating-view
   [rating-values]
   (let [ranks [:rating.value/strong-no
@@ -185,7 +197,18 @@
           {:icon fa/fa-pencil-alt-solid
            :on-click (fn [_]
                        (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}]]
-        [:h2 "Resources"]
+        [:div.legend {:tw "flex"}
+         [:h2 {:tw "grow"} "Resources"]
+         [:span {:tw "group relative"}
+          [fa/fa-question-circle-solid {:tw "w-4 h-4 text-gray-300 mr-2"}]
+          [:div {:tw "hidden group-hover:block absolute right-0 w-20em p-2 bg-white border"}
+           [:div "Would you recommend this resource to someone trying to learn " [:strong (:outcome/name outcome)] "?"]
+           [:div
+            (for [rating ratings/ratings]
+              [:div {:tw "flex items-center gap-1"}
+               [(rating->icon rating) {:tw "w-3 h-3"
+                                       :style {:color (rating->color rating)}}]
+               (rating->label rating)])]]]]
         (let [resources-with-rating-values
               (->> (:resource/_outcome outcome)
                    (map (fn [resource]
@@ -229,16 +252,12 @@
                                               (:outcome/id outcome)
                                               (:user/id @state/user))
                      user-rating @(state/pull' [:rating/id :rating/value]
-                                               [:rating/id user-rating-id])
-                     ->icon {:rating.value/strong-no fa/fa-poop-solid
-                             :rating.value/weak-no fa/fa-thumbs-down-solid
-                             :rating.value/weak-yes fa/fa-thumbs-up-solid
-                             :rating.value/strong-yes fa/fa-star-solid}]
+                                               [:rating/id user-rating-id])]
                  [:div.rate {:tw "inline-flex items-center gap-1 mr-1"}
                   (for [value ratings/ratings]
                     ^{:key value}
                     [icon-button-view
-                     {:icon (->icon value)
+                     {:icon (rating->icon value)
                       ;; girouette doesn't support !important modifier
                       :style (when (= value (:rating/value user-rating))
                                {:color (rating->color value)
