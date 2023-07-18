@@ -1,6 +1,8 @@
 (ns clojurecamp.currmap.ui.editor
   (:require
     [reagent.core :as r]
+    [bloom.commons.fontawesome :as fa]
+    [clojurecamp.currmap.ui.common :as ui]
     [clojurecamp.currmap.state :as state]
     [clojurecamp.currmap.schema :as schema]))
 
@@ -90,9 +92,11 @@
                                 (swap! entity assoc k new-value))}]]])]]
        [:div.gap {:tw "grow"}]
        [:div {:tw "flex justify-between"}
-        [:button {:tw "bg-gray-200 py-1 px-2"
-                  :type "button"
-                  :on-click (fn []
-                              (state/close-editor!))}
-         "Cancel"]
-        [:button {:tw "bg-blue-500 text-white p-1 px-2"} "Save"]]]]]))
+        [ui/text-button
+         {:label "Cancel"
+          :variant :secondary
+          :type "button"
+          :on-click (fn []
+                      (state/close-editor!))}]
+        [ui/text-button
+         {:label "Save"}]]]]]))

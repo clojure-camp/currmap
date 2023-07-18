@@ -4,14 +4,9 @@
     [bloom.commons.fontawesome :as fa]
     [clojurecamp.currmap.state :as state]
     [clojurecamp.currmap.ui.editor :as editor]
+    [clojurecamp.currmap.ui.common :as ui]
     [clojurecamp.currmap.domain.ratings :as ratings]
     [clojurecamp.currmap.schema :as schema]))
-
-(defn icon-button-view
-  [opts]
-  [:button (merge opts
-                  {:tw "text-gray-500 hover:text-black invisible group-hover:visible"})
-   [(:icon opts) {:tw "w-3 h-3"}]])
 
 (def levels
   [{:level/id :level/fundamentals
@@ -89,12 +84,12 @@
                     :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
                [:div.topic {:tw "group flex gap-1"}
                 [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
-                [icon-button-view
+                [ui/icon-button
                  {:icon fa/fa-pencil-alt-solid
                   :on-click (fn []
                               (state/open-editor!
                                 (state/entity-for-editing [:topic/id (:topic/id topic)])))}]
-                [icon-button-view
+                [ui/icon-button
                  {:icon fa/fa-plus-solid
                   :on-click (fn []
                               (state/open-editor! (merge (schema/blank :topic)
@@ -117,7 +112,7 @@
                                :on-click (fn []
                                            (reset! active-outcome-id (:outcome/id outcome)))}
                           [:div.outcome (:outcome/name outcome)]])]
-                      [icon-button-view
+                      [ui/icon-button
                        {:icon fa/fa-plus-solid
                         :on-click (fn []
                                     (state/open-editor! (merge (schema/blank :outcome)
@@ -130,9 +125,11 @@
                                :tw "w-4"}])]])))])))
      [:tr
       [:td
-       [:button {:on-click (fn []
-                             (state/open-editor! (schema/blank :topic)))}
-        "+ New Topic"]]]]]])
+       [ui/text-button
+        {:label "Add a new Topic"
+         :icon fa/fa-plus-solid
+         :on-click (fn []
+                     (state/open-editor! (schema/blank :topic)))}]]]]]])
 
 (def color-strong-no "#ad1724")
 (def color-weak-no "#df8877")
@@ -193,7 +190,7 @@
         [:div "Outcome"]
         [:div {:tw "flex gap-1 group"}
          [:h1 (:outcome/name outcome)]
-         [icon-button-view
+         [ui/icon-button
           {:icon fa/fa-pencil-alt-solid
            :on-click (fn [_]
                        (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}]]
@@ -234,7 +231,7 @@
                     :target "_blank"
                     :rel "noopener noreferrer"}
                 (:resource/name resource)]
-               [icon-button-view
+               [ui/icon-button
                 {:icon fa/fa-pencil-alt-solid
                  :on-click (fn [_]
                              (state/open-editor! (state/entity-for-editing [:resource/id (:resource/id resource)])))}]
@@ -256,7 +253,7 @@
                  [:div.rate {:tw "inline-flex items-center gap-1 mr-1"}
                   (for [value ratings/ratings]
                     ^{:key value}
-                    [icon-button-view
+                    [ui/icon-button
                      {:icon (rating->icon value)
                       ;; girouette doesn't support !important modifier
                       :style (when (= value (:rating/value user-rating))
