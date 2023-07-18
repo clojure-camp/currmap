@@ -266,7 +266,14 @@
                                            {:rating/user [:user/id (:user/id @state/user)]
                                             :rating/resource [:resource/id (:resource/id resource)]
                                             :rating/outcome [:outcome/id (:outcome/id outcome)]
-                                            :rating/value value})))}])])])))])))
+                                            :rating/value value})))}])])])))
+        [ui/text-button
+         {:icon fa/fa-plus-solid
+          :label "Add a new Resource"
+          :on-click (fn []
+                      (state/open-editor!
+                        (merge (schema/blank :resource)
+                               {:resource/outcome [{:outcome/id (:outcome/id outcome)}]})))}]])))
 
 (defn entity-editor-view
   []
