@@ -60,8 +60,8 @@
          rating-values-b rating-values-b]
     (let [median-a (median rating-values-a)
           median-b (median rating-values-b)
-          result (compare (average (map ->int median-a))
-                          (average (map ->int median-b)))]
+          result (compare (or (average (map ->int median-a)) 0)
+                          (or (average (map ->int median-b)) 0))]
       (if (and
             (= result 0)
             (seq rating-values-a)
@@ -78,3 +78,6 @@
   (clojure.core/sort (fn [a b]
                        (compare-by-ratings (kfn a) (kfn b))) coll))
 
+(rcf/tests
+  (sort identity [[:rating.value/weak-no] [] [:rating.value/weak-yes]])
+  := [[:rating.value/weak-yes] [] [:rating.value/weak-no]])
