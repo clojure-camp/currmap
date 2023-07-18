@@ -164,7 +164,7 @@
         total (count rating-values)
         counts (->> rating-values
                     frequencies)]
-    [:div {:tw "flex w-full h-full"}
+    [:div {:tw "flex w-full h-full bg-gray-300"}
      (doall
        (for [rank ranks]
          (doall
