@@ -1,66 +1,27 @@
 (ns clojurecamp.currmap.state
   (:require
-    [bloom.commons.debounce :as debounce]
+    [reagent.core :as r]
     [bloom.commons.ajax :as ajax]
     [bloom.commons.tada.rpc.client :as tada.rpc]
-    [cljs.reader]
-    [datascript.core :as d]
-    [reagent.core :as r]
-    [posh.reagent :as posh]
+    [clojurecamp.currmap.client.db :as db]
     [clojurecamp.currmap.schema :as schema]))
 
 (def remote-do!
   (tada.rpc/make-dispatch {:base-path "/api/tada"}))
 
-;; core data, in datascript
+;; datascript stuff
 
-(defonce data (r/atom nil))
+(defonce ready? (r/reaction @db/ready?))
 
-(defonce ready? (r/reaction (boolean @data)))
-
-(defn persist!
-  ;; tx-report
-  ;; https://github.com/tonsky/datascript/blob/master/src/datascript/core.cljc#L472
-  [{:keys [db-before db-after] :as tx-report}]
-  (remote-do!
-    [:put-data! {:db (pr-str db-after)} {}]))
-
-(def debounced-persist! (debounce/debounce persist! 500))
-
-(defn initialize-db! [db-string]
-  (reset! data
-          (d/conn-from-db (cljs.reader/read-string db-string)))
-  (posh/posh! @data)
-  (d/listen! @data ::persist debounced-persist!))
-
-(defn q
-  [query & args]
-  (apply posh/q query @data args))
-
-(defn pull'
-  [pattern [k v]]
-  (let [eid (first (d/q '[:find [?e ...]
-                          :in $ ?k ?v
-                          :where
-                          [?e ?k ?v]]
-                        @@data
-                        k v))]
-    (posh/pull @data pattern eid)))
-
-(defn pull
-  [pattern eid]
-  (apply posh/pull @data pattern eid))
-
-(defn transact!
-  [& args]
-  (apply d/transact! @data args))
-
+(def pull' db/pull')
+(def q db/q)
 
 ;; misc ui stuff, regular reagent atoms
 
-(defonce state (r/atom
-                 {:db/active-editor-entity nil
-                  :db/user nil}))
+(defonce state
+  (r/atom
+    {:db/active-editor-entity nil
+     :db/user nil}))
 
 (defn authenticate!
   [email]
@@ -99,12 +60,21 @@
 (def active-editor-entity (r/cursor state [:db/active-editor-entity]))
 (def user (r/cursor state [:db/user]))
 
+(defn remove-nil-values [m]
+  (->> m
+       (filter (fn [[_k v]]
+                 v))
+       (into {})))
+
 (defn save-entity!
   [entity]
-  (transact! [(->> entity
-                   (filter (fn [[_k v]]
-                             v))
-                   (into {}))]))
+  (let [entity (remove-nil-values entity)]
+    (remote-do!
+      [:upsert-entity!
+       {:entity entity}
+       {:on-success
+        (fn []
+          (db/transact! [entity]))}])))
 
 (defonce _
   (do
@@ -112,7 +82,7 @@
       [:data
        {}
        {:on-success (fn [{:keys [db user-id]}]
-                      (initialize-db! db)
+                      (db/initialize-db! db)
                       (when user-id
                         (swap! state assoc :db/user {:user/id user-id})))}])
     nil))

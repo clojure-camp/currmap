@@ -56,15 +56,17 @@
                               :email email}))
         {:status 200}))}
 
-   {:id :put-data!
+   {:id :upsert-entity!
     :params {:user-id uuid?
-             :db string?}
+             ;; TODO this spec could be better
+             :entity any?}
     :conditions
     (fn [{:keys [user-id]}]
       [[#(user-exists? user-id) :unauthorized "User not authorized"]])
     :effect
-    (fn [{:keys [db]}]
-      (db/overwrite-from-string! db))}])
+    (fn [{:keys [entity]}]
+      (db/transact! [entity])
+      (db/persist!))}])
 
 (def queries
   [{:id :data
