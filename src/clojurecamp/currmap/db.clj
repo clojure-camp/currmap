@@ -7,6 +7,8 @@
     [clojurecamp.currmap.config :as config]
     [clojurecamp.currmap.domain.schema :as schema]))
 
+;; calling this "data"
+;; it stores a "conn" (atom) that stores a "db"
 (defonce data (atom nil))
 
 (defn overwrite-from-string! [s]
@@ -26,17 +28,22 @@
     (initialize-from-file!)
     (initialize-empty!)))
 
-(defn edn
-  []
-  (-> @data
-      d/db
-      pr-str))
+(defn ->edn
+  [db]
+  (pr-str db))
+
+;; user data contains email PII
+(defn filter-users
+  [db]
+  (d/filter db
+            (fn [_db datom]
+              (not= "user" (namespace (:a datom))))))
 
 (defn persist!
   []
   (thread-safe/spit
     (config/get :data-path)
-    (edn)))
+    (->edn (d/db @data))))
 
 (defn q
   [query & args]

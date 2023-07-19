@@ -74,7 +74,7 @@
                             (uuid? e)))}
     :return
     (fn [{:keys [user-id]}]
-      {:db (db/edn)
+      {:db (db/->edn (db/filter-users @@db/data))
        :user-id user-id})}])
 
 (tada/register! (concat commands queries))
