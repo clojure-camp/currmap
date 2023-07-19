@@ -84,7 +84,7 @@
               [:td {:tw "align-top p-1"
                     :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
                [:div.topic {:tw "group flex gap-1"}
-                [:span {:tw "whitespace-nowrap"} (:topic/name topic)]
+                [:span {:tw "whitespace-nowrap font-semibold"} (:topic/name topic)]
                 [ui/icon-button
                  {:icon fa/fa-pencil-alt-solid
                   :on-click (fn []
