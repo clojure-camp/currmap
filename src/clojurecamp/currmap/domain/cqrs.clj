@@ -34,6 +34,12 @@
                [?u :user/id ?user-id]]
              user-id)))
 
+(defn remove-nil-values [m]
+  (->> m
+       (filter (fn [[_k v]]
+                 v))
+       (into {})))
+
 (def commands
   [{:id :request-auth!
     :params {:email (fn [email]
@@ -64,7 +70,7 @@
       [[#(user-exists? user-id) :unauthorized "User not authorized"]])
     :effect
     (fn [{:keys [entity]}]
-      (db/transact! [entity])
+      (db/transact! [(remove-nil-values entity)])
       (db/persist!))}])
 
 (def queries

@@ -32,34 +32,39 @@
    :db/spec :uuid})
 
 (defn rel
-  [cardinality entity-type]
+  [cardinality entity-type required-or-optional]
   {:db/type :db.type/ref
    :db/cardinality (case cardinality
-                    :one :db.cardinality/one
-                    :many :db.cardinality/many)
+                     :one :db.cardinality/one
+                     :many :db.cardinality/many)
    :db/spec (let [r [:map-of {:error/message "should be a related entity"}
                      [:and
                       :keyword
                       [:= (keyword
                             (name entity-type)
                             "id")]]
-                     :uuid]]
-              (case cardinality
-                :one r
-                :many [:vector {:min 1} r]))
+                     :uuid]
+                  s (case cardinality
+                      :one r
+                      :many [:vector {:min 1} r])]
+              (case required-or-optional
+                :required
+                s
+                :optional
+                [:maybe s]))
    :db/rel-entity-type entity-type
    :db/input :input/rel})
 
 (def schema
   {:topic
    {:topic/id id
-    :topic/parent (rel :one :topic)
+    :topic/parent (rel :one :topic :optional)
     :topic/name {:db/spec NonBlankString
                  :db/input :input/text}}
 
    :goal
    {:goal/id id
-    :goal/topic (rel :one :topic)
+    :goal/topic (rel :one :topic :required)
     :goal/description {:db/spec [:maybe NonBlankString]
                        :db/input :input/text}
     :goal/level {:db/spec Level
@@ -67,7 +72,7 @@
 
    :outcome
    {:outcome/id id
-    :outcome/topic (rel :one :topic)
+    :outcome/topic (rel :one :topic :required)
     :outcome/name {:db/spec NonBlankString
                    :db/input :input/text}
     :outcome/description {:db/spec [:maybe NonBlankString]
@@ -77,7 +82,7 @@
 
    :resource
    {:resource/id id
-    :resource/outcome (rel :many :outcome)
+    :resource/outcome (rel :many :outcome :optional)
     :resource/name {:db/spec NonBlankString
                     :db/input :input/text}
     :resource/url {:db/spec URL
@@ -87,9 +92,9 @@
 
    :rating
    {:rating/id id
-    :rating/user (rel :one :user)
-    :rating/resource (rel :one :resource)
-    :rating/outcome (rel :one :outcome)
+    :rating/user (rel :one :user :required)
+    :rating/resource (rel :one :resource :required)
+    :rating/outcome (rel :one :outcome :required)
     :rating/value {:db/spec RatingValue
                    :db/input :input/radio}}
 

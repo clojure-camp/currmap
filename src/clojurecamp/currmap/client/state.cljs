@@ -68,13 +68,12 @@
 
 (defn save-entity!
   [entity]
-  (let [entity (remove-nil-values entity)]
-    (remote-do!
-      [:upsert-entity!
-       {:entity entity}
-       {:on-success
-        (fn []
-          (db/transact! [entity]))}])))
+  (remote-do!
+    [:upsert-entity!
+     {:entity entity}
+     {:on-success
+      (fn []
+        (db/transact! [(remove-nil-values entity)]))}]))
 
 (defonce _
   (do
