@@ -1,10 +1,6 @@
 (ns clojurecamp.currmap.domain.schema
   (:require
-    [bloom.commons.uuid :as uuid]
-    [clojure.string :as string]
-    [malli.generator :as mg]))
-
-;; (WIP) malli specs
+    [bloom.commons.uuid :as uuid]))
 
 (def Email
   ;; TODO could be better
