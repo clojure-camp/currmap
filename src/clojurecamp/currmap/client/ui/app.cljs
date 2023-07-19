@@ -305,5 +305,5 @@
       [auth-view]]
      [:div {:tw "w-4/6"}
       [main-table-view]]
-     [:div {:tw "w-2/6"}
+     [:div {:tw "w-2/6 fixed top-0 right-0 bottom-0"}
       [sidebar-view]]]))
