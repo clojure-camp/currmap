@@ -109,6 +109,8 @@
 
 (defn attr->entity-type
   [attr]
+  ;; choosing a random attributes namespace
+  ;; TODO could look for id specifically
   (keyword (namespace attr)))
 
 (defn entity->entity-type
