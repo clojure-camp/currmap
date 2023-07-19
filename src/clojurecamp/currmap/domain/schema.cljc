@@ -1,5 +1,6 @@
 (ns clojurecamp.currmap.domain.schema
   (:require
+    [malli.core :as m]
     [bloom.commons.uuid :as uuid]))
 
 (def Email
@@ -136,6 +137,21 @@
                     [attr (:db/spec opts)])))))
 
 #_(malli-spec-for :goal)
+
+(def Entity
+  (into [:multi {:dispatch entity->entity-type}]
+        (->> (keys schema)
+             (map (fn [k]
+                    [k (malli-spec-for k)])))))
+
+;; given any entity, returns if valid
+;; precompiled for performance
+(def valid?
+  (m/validator Entity))
+
+#_(valid?
+    {:user/id #uuid "577d2583-b74b-4bc8-9af2-0671964c83b4"
+     :user/email "alice@example.com"})
 
 (defn pattern-for
   ;; ex "goal" -> [:goal/id ...]
