@@ -11,6 +11,7 @@
    [:auth-token-secret string?]
    [:data-path string?]
    [:website-base-url string?]
+   [:email-allowlist [:set string?]]
    [:smtp-credentials
     {:optional true}
     [:map

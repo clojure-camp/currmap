@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as string]
     [malli.core :as m]
+    [clojurecamp.currmap.config :as config]
     [clojurecamp.currmap.db :as db]
     [clojurecamp.currmap.email :as email]
     [clojurecamp.currmap.emails :as emails]
@@ -27,7 +28,9 @@
    [[:put "/api/request-auth"]
     (fn [request]
       (let [email (normalize (get-in request [:body-params :email]))]
-        (when (m/validate schema/Email email)
+        (if (and
+                (m/validate schema/Email email)
+                (contains? (config/get :email-allowlist) email))
           (let [user-id (or (email->user-id email)
                             (do
                               (db/transact!
@@ -37,7 +40,8 @@
             (email/send!
               (emails/login-link {:user-id user-id
                                   :email email}))
-            {:status 200}))))]
+            {:status 200}
+            {:status 400}))))]
 
    ;; users are logged in via omni's token middleware
 
