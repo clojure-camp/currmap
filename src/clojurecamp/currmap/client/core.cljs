@@ -1,8 +1,8 @@
 (ns ^:figwheel-hooks
-  clojurecamp.currmap.core
+  clojurecamp.currmap.client.core
   (:require
    [bloom.omni.reagent :as rdom]
-   [clojurecamp.currmap.ui.app :as app]))
+   [clojurecamp.currmap.client.ui.app :as app]))
 
 (defn render []
   (rdom/render [app/app-view]))

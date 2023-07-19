@@ -1,4 +1,4 @@
-(ns clojurecamp.currmap.state
+(ns clojurecamp.currmap.client.state
   (:require
     [reagent.core :as r]
     [bloom.commons.ajax :as ajax]

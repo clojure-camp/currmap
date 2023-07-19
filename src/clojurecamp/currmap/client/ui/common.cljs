@@ -1,4 +1,4 @@
-(ns clojurecamp.currmap.ui.common)
+(ns clojurecamp.currmap.client.ui.common)
 
 (defn icon-button
   [opts]

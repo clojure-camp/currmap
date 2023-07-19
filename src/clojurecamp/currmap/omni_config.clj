@@ -7,7 +7,7 @@
   {:omni/http-port (config/get :http-port)
    :omni/title "Clojure Camp - Curriculum Map"
    :omni/environment (config/get :environment)
-   :omni/cljs {:main "clojurecamp.currmap.core"}
+   :omni/cljs {:main "clojurecamp.currmap.client.core"}
    :omni/css {:tailwind? true}
    :omni/auth {:cookie {:name "clojurecamp-currmap"
                         :secret (config/get :auth-cookie-secret)}

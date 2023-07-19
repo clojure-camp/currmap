@@ -1,11 +1,11 @@
-(ns clojurecamp.currmap.ui.editor
+(ns clojurecamp.currmap.client.ui.editor
   (:require
     [reagent.core :as r]
     [bloom.commons.fontawesome :as fa]
     [malli.core :as m]
     [malli.error :as me]
-    [clojurecamp.currmap.ui.common :as ui]
-    [clojurecamp.currmap.state :as state]
+    [clojurecamp.currmap.client.ui.common :as ui]
+    [clojurecamp.currmap.client.state :as state]
     [clojurecamp.currmap.domain.schema :as schema]))
 
 (defmulti input-view #(get-in % [:schema :db/input]))

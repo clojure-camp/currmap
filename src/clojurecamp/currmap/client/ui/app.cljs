@@ -1,10 +1,10 @@
-(ns clojurecamp.currmap.ui.app
+(ns clojurecamp.currmap.client.ui.app
   (:require
     [reagent.core :as r]
     [bloom.commons.fontawesome :as fa]
-    [clojurecamp.currmap.state :as state]
-    [clojurecamp.currmap.ui.editor :as editor]
-    [clojurecamp.currmap.ui.common :as ui]
+    [clojurecamp.currmap.client.state :as state]
+    [clojurecamp.currmap.client.ui.editor :as editor]
+    [clojurecamp.currmap.client.ui.common :as ui]
     [clojurecamp.currmap.domain.ratings :as ratings]
     [clojurecamp.currmap.domain.schema :as schema]))
 
