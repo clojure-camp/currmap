@@ -21,7 +21,7 @@
   [query & args]
   (apply posh/q query @data args))
 
-(defn pull'
+(defn pull-ident
   [pattern [k v]]
   (let [eid (first (d/q '[:find [?e ...]
                           :in $ ?k ?v

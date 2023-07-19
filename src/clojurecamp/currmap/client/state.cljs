@@ -13,7 +13,7 @@
 
 (defonce ready? (r/reaction @db/ready?))
 
-(def pull' db/pull')
+(def pull-ident db/pull-ident)
 (def q db/q)
 
 ;; misc ui stuff, regular reagent atoms
@@ -45,7 +45,7 @@
 
 (defn entity-for-editing
   [[id-attr _id :as ident]]
-  @(pull'
+  @(pull-ident
     (schema/pattern-for (schema/attr->entity-type id-attr))
     ident))
 

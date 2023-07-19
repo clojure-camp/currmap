@@ -62,17 +62,18 @@
                                       [(missing? $ ?t :topic/parent)]])
            topics (->> root-topic-ids
                        (map (fn [root-topic-id ]
-                              @(state/pull' '[:topic/id
-                                              :topic/name
-                                              :topic/parent
-                                              {:topic/_parent ...}
-                                              {:goal/_topic [:goal/id
-                                                             :goal/description
-                                                             :goal/level]}
-                                              {:outcome/_topic [:outcome/id
-                                                                :outcome/name
-                                                                :outcome/level]}]
-                                            [:topic/id root-topic-id])))
+                              @(state/pull-ident
+                                 '[:topic/id
+                                   :topic/name
+                                   :topic/parent
+                                   {:topic/_parent ...}
+                                   {:goal/_topic [:goal/id
+                                                  :goal/description
+                                                  :goal/level]}
+                                   {:outcome/_topic [:outcome/id
+                                                     :outcome/name
+                                                     :outcome/level]}]
+                                 [:topic/id root-topic-id])))
                        (mapcat (fn [topic]
                                  (tree-seq-with-depth map? :topic/_parent topic)))
                        doall)]
@@ -179,13 +180,14 @@
 
 (defn sidebar-view []
    (when @active-outcome-id
-     (let [outcome @(state/pull' [:outcome/id
-                                  :outcome/name
-                                  :outcome/level
-                                  {:resource/_outcome [:resource/id
-                                                       :resource/name
-                                                       :resource/url]}]
-                                [:outcome/id @active-outcome-id])]
+     (let [outcome @(state/pull-ident
+                      [:outcome/id
+                       :outcome/name
+                       :outcome/level
+                       {:resource/_outcome [:resource/id
+                                            :resource/name
+                                            :resource/url]}]
+                      [:outcome/id @active-outcome-id])]
        [:div.outcome
         [:div "Outcome"]
         [:div {:tw "flex gap-1 group"}
@@ -249,8 +251,9 @@
                                               (:resource/id resource)
                                               (:outcome/id outcome)
                                               (:user/id @state/user))
-                     user-rating @(state/pull' [:rating/id :rating/value]
-                                               [:rating/id user-rating-id])]
+                     user-rating @(state/pull-ident
+                                    [:rating/id :rating/value]
+                                    [:rating/id user-rating-id])]
                  [:div.rate {:tw "inline-flex items-center gap-1 mr-1"}
                   (for [value ratings/ratings]
                     ^{:key value}
