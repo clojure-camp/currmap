@@ -45,7 +45,7 @@
 
 (defn main-table-view []
   [:div
-   [:table
+   [:table {:tw "text-sm"}
     [:thead
      [:tr
       [:td]
