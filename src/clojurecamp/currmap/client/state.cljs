@@ -45,9 +45,12 @@
 
 (defn entity-for-editing
   [[id-attr _id :as ident]]
-  @(pull-ident
-    (schema/pattern-for (schema/attr->entity-type id-attr))
-    ident))
+  (let [entity-type (schema/attr->entity-type id-attr)]
+    (merge
+      (schema/blank entity-type)
+      @(pull-ident
+         (schema/pattern-for (schema/attr->entity-type id-attr))
+         ident))))
 
 (defn open-editor!
   [starter-entity]
