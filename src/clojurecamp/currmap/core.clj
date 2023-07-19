@@ -3,6 +3,7 @@
   (:require
     [bloom.omni.core :as omni]
     [clojurecamp.currmap.omni-config :refer [omni-config]]
+    [clojurecamp.currmap.domain.cqrs] ;; just to initialize
     [clojurecamp.currmap.db :as db]))
 
 (defn start! []

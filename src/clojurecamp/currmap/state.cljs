@@ -2,11 +2,15 @@
   (:require
     [bloom.commons.debounce :as debounce]
     [bloom.commons.ajax :as ajax]
+    [bloom.commons.tada.rpc.client :as tada.rpc]
     [cljs.reader]
     [datascript.core :as d]
     [reagent.core :as r]
     [posh.reagent :as posh]
     [clojurecamp.currmap.schema :as schema]))
+
+(def remote-do!
+  (tada.rpc/make-dispatch {:base-path "/api/tada"}))
 
 ;; core data, in datascript
 
@@ -18,13 +22,8 @@
   ;; tx-report
   ;; https://github.com/tonsky/datascript/blob/master/src/datascript/core.cljc#L472
   [{:keys [db-before db-after] :as tx-report}]
-  (ajax/request
-    {:uri "/api/data"
-     :method :put
-     :params {:db (pr-str db-after)}
-     :on-success (fn []
-
-                   )}))
+  (remote-do!
+    [:put-data! {:db (pr-str db-after)} {}]))
 
 (def debounced-persist! (debounce/debounce persist! 500))
 
@@ -65,14 +64,13 @@
 
 (defn authenticate!
   [email]
-  (ajax/request
-    {:uri "/api/request-auth"
-     :method :put
-     :params {:email email}
-     :on-success (fn []
-                   (js/alert "A log in link has been sent. Check your email."))
-     :on-error (fn []
-                 (js/alert "Auth error."))}))
+  (remote-do!
+    [:request-auth!
+     {:email email}
+     {:on-success (fn []
+                    (js/alert "A log in link has been sent. Check your email."))
+      :on-error (fn []
+                  (js/alert "Auth error."))}]))
 
 (defn log-out!
   []
@@ -110,11 +108,11 @@
 
 (defonce _
   (do
-    (ajax/request
-      {:uri "/api/data"
-       :method :get
-       :on-success (fn [{:keys [db user-id]}]
-                     (initialize-db! db)
-                     (when user-id
-                       (swap! state assoc :db/user {:user/id user-id})))})
+    (remote-do!
+      [:data
+       {}
+       {:on-success (fn [{:keys [db user-id]}]
+                      (initialize-db! db)
+                      (when user-id
+                        (swap! state assoc :db/user {:user/id user-id})))}])
     nil))
