@@ -13,8 +13,8 @@
 
 (defonce ready? (r/reaction @db/ready?))
 
-(def pull-ident db/pull-ident)
-(def q db/q)
+(def pull-ident db/rx-pull-ident)
+(def q db/rx-q)
 
 ;; misc ui stuff, regular reagent atoms
 
@@ -48,9 +48,9 @@
   (let [entity-type (schema/attr->entity-type id-attr)]
     (merge
       (schema/blank entity-type)
-      @(pull-ident
-         (schema/pattern-for (schema/attr->entity-type id-attr))
-         ident))))
+      (db/pull-ident
+        (schema/pattern-for (schema/attr->entity-type id-attr))
+        ident))))
 
 (defn open-editor!
   [starter-entity]

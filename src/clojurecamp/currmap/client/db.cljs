@@ -17,11 +17,13 @@
   (posh/posh! @data)
   (reset! ready? true))
 
-(defn q
+(defn rx-q
+  "Reactive q"
   [query & args]
   (apply posh/q query @data args))
 
-(defn pull-ident
+(defn rx-pull-ident
+  "Reactive pull-ident"
   [pattern [k v]]
   (let [eid (first (d/q '[:find [?e ...]
                           :in $ ?k ?v
@@ -31,9 +33,15 @@
                         k v))]
     (posh/pull @data pattern eid)))
 
-(defn pull
-  [pattern eid]
-  (apply posh/pull @data pattern eid))
+(defn pull-ident
+  [pattern [k v]]
+  (let [eid (first (d/q '[:find [?e ...]
+                          :in $ ?k ?v
+                          :where
+                          [?e ?k ?v]]
+                        @@data
+                        k v))]
+    (d/pull @@data pattern eid)))
 
 (defn transact!
   [& args]
