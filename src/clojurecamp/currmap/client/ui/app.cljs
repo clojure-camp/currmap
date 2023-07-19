@@ -105,8 +105,8 @@
                               goal (first (goals-by-level level))]]
                     ^{:key level}
                     [:<>
-                     [:td.level {:tw "group align-top p-1 space-y-1"}
-                      [:ul {:tw "list-disc"}
+                     [:td.level {:tw "group align-top p-1 space-y-1 border-l"}
+                      [:ul {:tw "list-disc ml-4"}
                        (for [outcome outcomes]
                          ^{:key (:outcome/id outcome)}
                          [:li {:tw "cursor-pointer"
