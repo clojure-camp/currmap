@@ -6,7 +6,7 @@
     [clojurecamp.currmap.ui.editor :as editor]
     [clojurecamp.currmap.ui.common :as ui]
     [clojurecamp.currmap.domain.ratings :as ratings]
-    [clojurecamp.currmap.schema :as schema]))
+    [clojurecamp.currmap.domain.schema :as schema]))
 
 (def levels
   [{:level/id :level/fundamentals

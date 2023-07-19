@@ -5,7 +5,7 @@
     [bloom.commons.thread-safe-io :as thread-safe]
     [datascript.core :as d]
     [clojurecamp.currmap.config :as config]
-    [clojurecamp.currmap.schema :as schema]))
+    [clojurecamp.currmap.domain.schema :as schema]))
 
 (defonce data (atom nil))
 

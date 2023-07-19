@@ -7,7 +7,7 @@
     [clojurecamp.currmap.db :as db]
     [clojurecamp.currmap.email :as email]
     [clojurecamp.currmap.emails :as emails]
-    [clojurecamp.currmap.schema :as schema]))
+    [clojurecamp.currmap.domain.schema :as schema]))
 
 (defn normalize
   [email-string]

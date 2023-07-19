@@ -6,7 +6,7 @@
     [malli.error :as me]
     [clojurecamp.currmap.ui.common :as ui]
     [clojurecamp.currmap.state :as state]
-    [clojurecamp.currmap.schema :as schema]))
+    [clojurecamp.currmap.domain.schema :as schema]))
 
 (defmulti input-view #(get-in % [:schema :db/input]))
 

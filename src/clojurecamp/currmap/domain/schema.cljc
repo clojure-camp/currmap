@@ -1,4 +1,4 @@
-(ns clojurecamp.currmap.schema
+(ns clojurecamp.currmap.domain.schema
   (:require
     [bloom.commons.uuid :as uuid]
     [clojure.string :as string]

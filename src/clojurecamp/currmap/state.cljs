@@ -4,7 +4,7 @@
     [bloom.commons.ajax :as ajax]
     [bloom.commons.tada.rpc.client :as tada.rpc]
     [clojurecamp.currmap.client.db :as db]
-    [clojurecamp.currmap.schema :as schema]))
+    [clojurecamp.currmap.domain.schema :as schema]))
 
 (def remote-do!
   (tada.rpc/make-dispatch {:base-path "/api/tada"}))
