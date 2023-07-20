@@ -52,11 +52,8 @@
      [:tr
       [:th]
       [level-header-view 0]
-      [:th]
       [level-header-view 1]
-      [:th]
-      [level-header-view 2]
-      [:th]]]
+      [level-header-view 2]]]
     [:tbody
      (let [root-topic-ids @(state/q '[:find [?id ...]
                                       :where
@@ -69,12 +66,10 @@
                                    :topic/name
                                    :topic/parent
                                    {:topic/_parent ...}
-                                   {:goal/_topic [:goal/id
-                                                  :goal/description
-                                                  :goal/level]}
                                    {:outcome/_topic [:outcome/id
                                                      :outcome/name
-                                                     :outcome/level]}]
+                                                     :outcome/level
+                                                     :outcome/type]}]
                                  [:topic/id root-topic-id])))
                        (mapcat (fn [topic]
                                  (tree-seq-with-depth map? :topic/_parent topic)))
@@ -101,34 +96,32 @@
                              (state/open-editor! (merge (schema/blank :topic)
                                                         {:topic/parent {:topic/id (:topic/id topic)}})))}]]]
              (let [outcomes-by-level (->> (:outcome/_topic topic)
-                                          (group-by :outcome/level))
-                   goals-by-level (->> (:goal/_topic topic)
-                                       (group-by :goal/level))]
+                                          (group-by :outcome/level))]
                (doall
                  (for [level (map :level/id levels)
-                       :let [outcomes (outcomes-by-level level)
-                             goal (first (goals-by-level level))]]
+                       :let [outcomes (outcomes-by-level level)]]
                    ^{:key level}
                    [:<>
                     [:td.level {:tw "group align-top p-1 space-y-1 border-l"}
                      [:ul {:tw "list-disc ml-4"}
-                      (for [outcome outcomes]
+                      (for [outcome outcomes
+                            :let [milestone? (= :outcome.type/milestone
+                                                (:outcome/type outcome))]]
                         ^{:key (:outcome/id outcome)}
-                        [:li {:tw "cursor-pointer"
-                              :on-click (fn []
-                                          (reset! active-outcome-id (:outcome/id outcome)))}
-                         [:div.outcome (:outcome/name outcome)]])]
+                        [:li.outcome {:tw [ "cursor-pointer"
+                                           (when milestone?
+                                             "italic")]
+                                      :on-click (fn []
+                                                  (reset! active-outcome-id (:outcome/id outcome)))}
+                         (when milestone?
+                           [fa/fa-star-solid {:tw "w-3 h-3 -mt-1 -ml-4 inline mr-1"}])
+                         (:outcome/name outcome)])]
                      [ui/icon-button
                       {:icon fa/fa-plus-solid
                        :on-click (fn []
                                    (state/open-editor! (merge (schema/blank :outcome)
                                                               {:outcome/level level
-                                                               :outcome/topic {:topic/id (:topic/id topic)}})))}]]
-                    [:td.goal
-                     (when goal
-                       [:img {:title (:goal/description goal)
-                              :src "/images/fa-portal-enter.svg"
-                              :tw "w-4"}])]])))]])))
+                                                               :outcome/topic {:topic/id (:topic/id topic)}})))}]]])))]])))
      [:tr
       [:td
        [ui/text-button

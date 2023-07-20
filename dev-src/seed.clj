@@ -21,16 +21,6 @@
     :topic/name "Macros"
     :topic/parent [:topic/id (id "topic-clojure")]}
 
-   {:goal/id (id "goal-clojure-fundamentals")
-    :goal/description  "do a Day 1 Advent of Code problem, without assistance, in under 45 minutes"
-    :goal/topic [:topic/id (id "topic-clojure")]
-    :goal/level :level/fundamentals}
-
-   {:goal/id (id "goal-clojure-core")
-    :goal/description "do a Day 5 Advent of Code problem, idiomatically, without assistance, in under 45 minutes"
-    :goal/topic [:topic/id (id "topic-clojure")]
-    :goal/level :level/core}
-
    {:outcome/id (id "outcome-atoms")
     :outcome/name "work with atoms"
     :outcome/description "TODO"

@@ -66,14 +66,6 @@
     :topic/name {:db/spec NonBlankString
                  :db/input :input/text}}
 
-   :goal
-   {:goal/id id
-    :goal/topic (rel :one :topic :required)
-    :goal/description {:db/spec [:maybe NonBlankString]
-                       :db/input :input/text}
-    :goal/level {:db/spec Level
-                 :db/input :input/radio}}
-
    :outcome
    {:outcome/id id
     :outcome/topic (rel :one :topic :required)
@@ -149,7 +141,7 @@
              (map (fn [[attr opts]]
                     [attr (:db/spec opts)])))))
 
-#_(malli-spec-for :goal)
+#_(malli-spec-for :topic)
 
 (def Entity
   (into [:multi {:dispatch entity->entity-type}]
@@ -167,7 +159,7 @@
      :user/email "alice@example.com"})
 
 (defn pattern-for
-  ;; ex "goal" -> [:goal/id ...]
+  ;; ex "topic" -> [:topic/id ...]
   [entity-type]
   (->> (schema entity-type)
        (map (fn [[attr opts]]
@@ -177,7 +169,7 @@
                 :else
                 attr)))))
 
-#_(pattern-for :goal)
+#_(pattern-for :topic)
 
 (defn blank
   [entity-type]
@@ -185,4 +177,4 @@
               (repeat nil))
       (assoc (id-key-for entity-type) (uuid/random))))
 
-#_(blank :goal)
+#_(blank :topic)
