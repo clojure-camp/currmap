@@ -332,7 +332,7 @@
            :on-click (fn []
                        (state/set-active-outcome! nil))}
      [entity-editor-view]
-     [:div {:tw "absolute top-0 right-0"}
+     [:div {:tw "absolute top-0 left-0"}
       [auth-view]]
      [main-table-view]
      [:div {:tw "absolute"}
