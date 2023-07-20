@@ -82,7 +82,7 @@
     (let [errors (me/humanize (m/explain (schema/malli-spec-for
                                            (schema/entity->entity-type @entity))
                                          @entity))]
-      [:div.wrapper {:tw "fixed p-10 inset-1/4"}
+      [:div.wrapper {:tw "fixed p-10 inset-1/4 z-50"}
        [:form.editor
         {:tw "bg-white border flex flex-col w-full h-full"
          :on-submit (fn [e]
