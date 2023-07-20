@@ -1,5 +1,6 @@
 (ns clojurecamp.currmap.client.ui.editor
   (:require
+    [clojure.string :as string]
     [reagent.core :as r]
     [bloom.commons.fontawesome :as fa]
     [malli.core :as m]
@@ -16,7 +17,10 @@
    {:tw "border border-gray-500 p-1"
     :default-value value
     :on-change (fn [e]
-                 (on-change (.. e -target -value)))}])
+                 (let [v (.. e -target -value)]
+                   (on-change (if (string/blank? v)
+                                nil
+                                v))))}])
 
 (defmethod input-view :input/radio
   [{:keys [schema value on-change]}]
