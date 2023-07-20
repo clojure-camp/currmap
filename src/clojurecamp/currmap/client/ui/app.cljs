@@ -20,7 +20,7 @@
    {:level/id :level/advanced
     :level/name "Advanced"
     :level/quick-description "\"don't worry about it\""
-    :level/description "topics that can safely be deferred until much later"}])
+    :level/description "topics that can safely be deferred until much later; situational"}])
 
 (defn tree-seq-with-depth
   "Like tree-seq, but takes in a tree of maps and adds :depth key to each map."
