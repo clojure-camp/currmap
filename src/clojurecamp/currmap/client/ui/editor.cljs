@@ -18,6 +18,20 @@
     :on-change (fn [e]
                  (on-change (.. e -target -value)))}])
 
+(defmethod input-view :input/radio
+  [{:keys [schema value on-change]}]
+  [:div
+   (for [option (-> (:db/spec schema)
+                    ;; fragile
+                    rest)]
+     ^{:key option}
+     [:label {:tw "flex gap-1"}
+      [:input {:type "radio"
+               :checked (= value option)
+               :on-change (fn [_]
+                            (on-change option))}]
+      (pr-str option)])])
+
 (defmethod input-view :input/rel
   [{:keys [schema value on-change]}]
   ;; for a rel, value is expected to be, for example {:topic/id #uuid "..."}
