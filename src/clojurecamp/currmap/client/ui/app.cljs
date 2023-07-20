@@ -36,25 +36,27 @@
 
 (defn level-header-view [level-n]
   (let [level (get levels level-n)]
-    [:div {:title (:level/description level)}
-     [:div {:tw "font-bold flex justify-between"}
-      (:level/name level)
-      [fa/fa-question-circle-solid {:tw "w-4"}]]
-     [:div
-      (:level/quick-description level)]]))
+    [:th {:tw "sticky top-0 bg-white text-left border-l p-1"}
+     [:div {:title (:level/description level)
+            :tw "border-b"}
+      [:div {:tw "font-bold flex justify-between"}
+       (:level/name level)
+       [fa/fa-question-circle-solid {:tw "w-4"}]]
+      [:div {:tw "font-normal"}
+       (:level/quick-description level)]]]))
 
 (defn main-table-view []
   [:div
    [:table {:tw "text-sm"}
     [:thead
      [:tr
-      [:td]
-      [:td [level-header-view 0]]
-      [:td]
-      [:td [level-header-view 1]]
-      [:td]
-      [:td [level-header-view 2]]
-      [:td]]]
+      [:th]
+      [level-header-view 0]
+      [:th]
+      [level-header-view 1]
+      [:th]
+      [level-header-view 2]
+      [:th]]]
     [:tbody
      (let [root-topic-ids @(state/q '[:find [?id ...]
                                       :where
@@ -80,50 +82,53 @@
        (doall
          (for [topic topics]
            ^{:key (:topic/id topic)}
-             [:tr {:tw "even:bg-gray-200"}
-              [:td {:tw "align-top p-1"
-                    :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
-               [:div.topic {:tw "group flex gap-1"}
-                [:span {:tw "whitespace-nowrap font-semibold"} (:topic/name topic)]
-                [ui/icon-button
-                 {:icon fa/fa-pencil-alt-solid
-                  :on-click (fn []
-                              (state/open-editor!
-                                (state/entity-for-editing [:topic/id (:topic/id topic)])))}]
-                [ui/icon-button
-                 {:icon fa/fa-plus-solid
-                  :on-click (fn []
-                              (state/open-editor! (merge (schema/blank :topic)
-                                                         {:topic/parent {:topic/id (:topic/id topic)}})))}]]]
-              (let [outcomes-by-level (->> (:outcome/_topic topic)
-                                           (group-by :outcome/level))
-                    goals-by-level (->> (:goal/_topic topic)
-                                        (group-by :goal/level))]
-                (doall
-                  (for [level (map :level/id levels)
-                        :let [outcomes (outcomes-by-level level)
-                              goal (first (goals-by-level level))]]
-                    ^{:key level}
-                    [:<>
-                     [:td.level {:tw "group align-top p-1 space-y-1 border-l"}
-                      [:ul {:tw "list-disc ml-4"}
-                       (for [outcome outcomes]
-                         ^{:key (:outcome/id outcome)}
-                         [:li {:tw "cursor-pointer"
-                               :on-click (fn []
-                                           (reset! active-outcome-id (:outcome/id outcome)))}
-                          [:div.outcome (:outcome/name outcome)]])]
-                      [ui/icon-button
-                       {:icon fa/fa-plus-solid
-                        :on-click (fn []
-                                    (state/open-editor! (merge (schema/blank :outcome)
-                                                               {:outcome/level level
-                                                                :outcome/topic {:topic/id (:topic/id topic)}})))}]]
-                     [:td.goal
-                      (when goal
-                        [:img {:title (:goal/description goal)
-                               :src "/images/fa-portal-enter.svg"
-                               :tw "w-4"}])]])))])))
+           [:<>
+            (when (= 0 (:depth topic))
+              [:tr {:tw "h-20 first:hidden"}])
+            [:tr {:tw "even:bg-gray-200"}
+             [:td {:tw "align-top p-1"
+                   :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
+              [:div.topic {:tw "group flex gap-1"}
+               [:span {:tw "whitespace-nowrap font-semibold"} (:topic/name topic)]
+               [ui/icon-button
+                {:icon fa/fa-pencil-alt-solid
+                 :on-click (fn []
+                             (state/open-editor!
+                               (state/entity-for-editing [:topic/id (:topic/id topic)])))}]
+               [ui/icon-button
+                {:icon fa/fa-plus-solid
+                 :on-click (fn []
+                             (state/open-editor! (merge (schema/blank :topic)
+                                                        {:topic/parent {:topic/id (:topic/id topic)}})))}]]]
+             (let [outcomes-by-level (->> (:outcome/_topic topic)
+                                          (group-by :outcome/level))
+                   goals-by-level (->> (:goal/_topic topic)
+                                       (group-by :goal/level))]
+               (doall
+                 (for [level (map :level/id levels)
+                       :let [outcomes (outcomes-by-level level)
+                             goal (first (goals-by-level level))]]
+                   ^{:key level}
+                   [:<>
+                    [:td.level {:tw "group align-top p-1 space-y-1 border-l"}
+                     [:ul {:tw "list-disc ml-4"}
+                      (for [outcome outcomes]
+                        ^{:key (:outcome/id outcome)}
+                        [:li {:tw "cursor-pointer"
+                              :on-click (fn []
+                                          (reset! active-outcome-id (:outcome/id outcome)))}
+                         [:div.outcome (:outcome/name outcome)]])]
+                     [ui/icon-button
+                      {:icon fa/fa-plus-solid
+                       :on-click (fn []
+                                   (state/open-editor! (merge (schema/blank :outcome)
+                                                              {:outcome/level level
+                                                               :outcome/topic {:topic/id (:topic/id topic)}})))}]]
+                    [:td.goal
+                     (when goal
+                       [:img {:title (:goal/description goal)
+                              :src "/images/fa-portal-enter.svg"
+                              :tw "w-4"}])]])))]])))
      [:tr
       [:td
        [ui/text-button
