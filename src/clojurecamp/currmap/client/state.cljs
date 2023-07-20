@@ -21,7 +21,16 @@
 (defonce state
   (r/atom
     {:db/active-editor-entity nil
-     :db/user nil}))
+     :db/user nil
+     :db/active-outcome nil}))
+
+(def active-editor-entity (r/cursor state [:db/active-editor-entity]))
+(def user (r/cursor state [:db/user]))
+(def active-outcome (r/cursor state [:db/active-outcome]))
+
+(defn set-active-outcome!
+  [o]
+  (swap! state assoc :db/active-outcome o))
 
 (defn authenticate!
   [email]
@@ -59,9 +68,6 @@
 (defn close-editor!
   []
   (swap! state assoc :db/active-editor-entity nil))
-
-(def active-editor-entity (r/cursor state [:db/active-editor-entity]))
-(def user (r/cursor state [:db/user]))
 
 (defn remove-nil-values [m]
   (->> m

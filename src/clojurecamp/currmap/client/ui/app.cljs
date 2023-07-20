@@ -32,8 +32,6 @@
                          (mapcat (partial walk (inc depth)) (children node))))))]
     (walk 0 root)))
 
-(defonce active-outcome-id (r/atom nil))
-
 (defn level-header-view [level-n]
   (let [level (get levels level-n)]
     [:th {:tw "sticky top-0 bg-white text-left border-l p-1"}
@@ -104,18 +102,32 @@
                    [:<>
                     [:td.level {:tw "group align-top p-1 space-y-1 border-l"}
                      [:ul {:tw "list-disc ml-4"}
-                      (for [outcome outcomes
-                            :let [milestone? (= :outcome.type/milestone
-                                                (:outcome/type outcome))]]
-                        ^{:key (:outcome/id outcome)}
-                        [:li.outcome {:tw [ "cursor-pointer"
-                                           (when milestone?
-                                             "italic")]
-                                      :on-click (fn []
-                                                  (reset! active-outcome-id (:outcome/id outcome)))}
-                         (when milestone?
-                           [fa/fa-star-solid {:tw "w-3 h-3 -mt-1 -ml-4 inline mr-1"}])
-                         (:outcome/name outcome)])]
+                      (doall
+                        (for [outcome outcomes
+                              :let [milestone? (= :outcome.type/milestone
+                                                  (:outcome/type outcome))]]
+                          ^{:key (:outcome/id outcome)}
+                          [:li.outcome
+                           (when milestone?
+                             [fa/fa-star-solid {:tw "w-3 h-3 -mt-1 -ml-4 inline mr-1"}])
+                           [:div {:tw "inline-flex gap-1 group"} ; nested groups don't work in girouette
+                            [:div {:tw ["cursor-pointer"
+                                        (when milestone?
+                                          "italic")
+                                        (when (= (:outcome/id outcome)
+                                                 (:outcome-id @state/active-outcome))
+                                          "bg-yellow-200")]
+                                   :on-click (fn [e]
+                                               (state/set-active-outcome!
+                                                 {:outcome-id (:outcome/id outcome)
+                                                  :element (.. e -target)})
+                                               ;; b/c we have an on-click-capture on root to close
+                                               (.stopPropagation e))}
+                             (:outcome/name outcome)]
+                            [ui/icon-button
+                             {:icon fa/fa-pencil-alt-solid
+                              :on-click (fn [_]
+                                          (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}]]]))]
                      [ui/icon-button
                       {:icon fa/fa-plus-solid
                        :on-click (fn []
@@ -176,24 +188,43 @@
                             :align-items "center"
                             :justify-content "center"}}]))))]))
 
-(defn sidebar-view []
-   (when @active-outcome-id
+(defn outcome-popover-view []
+  [:div#tooltip
+   {:tw (when (nil? @state/active-outcome) "hidden")
+    :ref (fn [el]
+           (when el
+             (.. js/Popper (createPopper
+                             (:element @state/active-outcome)
+                             el
+                             (clj->js
+                               {:placement "top"
+                                :modifiers [{:name "offset"
+                                             :options {:offset [0 8]}}]})))))}
+   [:style
+    "#tooltip[data-popper-placement^='top'] > #arrow { bottom: -0.5em; }
+    #tooltip[data-popper-placement^='top'] > #arrow > div { transform: rotate(225deg); }
+    #tooltip[data-popper-placement^='bottom'] > #arrow { top: -0.5em; }
+    #tooltip[data-popper-placement^='bottom'] > #arrow > div { transform: rotate(45deg); }
+    #tooltip[data-popper-placement^='left'] > #arrow { right: -0.5em; }
+    #tooltip[data-popper-placement^='left'] > #arrow > div { transform: rotate(135deg); }
+    #tooltip[data-popper-placement^='right'] > #arrow { left: -0.5em; }
+    #tooltip[data-popper-placement^='right'] > #arrow > div { transform: rotate(315deg); }
+    "]
+   [:div#arrow {:data-popper-arrow true
+                :tw "absolute"}
+    [:div {:tw "w-1em h-1em bg-white transform border-t-1 border-l-1"}]]
+   (when @state/active-outcome
      (let [outcome @(state/pull-ident
                       [:outcome/id
                        :outcome/name
                        :outcome/level
+                       :outcome/description
                        {:resource/_outcome [:resource/id
                                             :resource/name
                                             :resource/url]}]
-                      [:outcome/id @active-outcome-id])]
-       [:div.outcome
-        [:div "Outcome"]
-        [:div {:tw "flex gap-1 group"}
-         [:h1 (:outcome/name outcome)]
-         [ui/icon-button
-          {:icon fa/fa-pencil-alt-solid
-           :on-click (fn [_]
-                       (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}]]
+                      [:outcome/id (:outcome-id @state/active-outcome)])]
+       [:div {:tw "bg-white shadow p-4 min-w-20em border"}
+        [:div (:outcome/description outcome)]
         [:div.legend {:tw "flex"}
          [:h2 {:tw "grow"} "Resources"]
          [:span {:tw "group relative"}
@@ -275,7 +306,7 @@
           :on-click (fn []
                       (state/open-editor!
                         (merge (schema/blank :resource)
-                               {:resource/outcome [{:outcome/id (:outcome/id outcome)}]})))}]])))
+                               {:resource/outcome [{:outcome/id (:outcome/id outcome)}]})))}]]))])
 
 (defn entity-editor-view
   []
@@ -297,11 +328,12 @@
 
 (defn app-view []
   (when @state/ready?
-    [:div {:tw "w-full flex"}
+    [:div {:tw "w-full flex"
+           :on-click (fn []
+                       (state/set-active-outcome! nil))}
      [entity-editor-view]
      [:div {:tw "absolute top-0 right-0"}
       [auth-view]]
-     [:div {:tw "w-4/6"}
-      [main-table-view]]
-     [:div {:tw "w-2/6 fixed top-0 right-0 bottom-0"}
-      [sidebar-view]]]))
+     [main-table-view]
+     [:div {:tw "absolute"}
+      [outcome-popover-view]]]))
