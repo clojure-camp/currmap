@@ -23,6 +23,10 @@
    :rating.value/yes
    :rating.value/strong-yes])
 
+(def OutcomeType
+  [:enum
+   :outcome.type/milestone])
+
 (def URL
   [:re {:error/message "should be a link, starting with https://"} #"https://.*"])
 
@@ -78,7 +82,9 @@
     :outcome/description {:db/spec [:maybe NonBlankString]
                           :db/input :input/text}
     :outcome/level {:db/spec Level
-                    :db/input :input/radio}}
+                    :db/input :input/radio}
+    :outcome/type {:db/spec [:maybe OutcomeType]
+                   :db/input :input/radio}}
 
    :resource
    {:resource/id id

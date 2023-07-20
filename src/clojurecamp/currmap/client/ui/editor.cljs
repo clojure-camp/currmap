@@ -25,10 +25,15 @@
 (defmethod input-view :input/radio
   [{:keys [schema value on-change]}]
   [:div
-   (for [option (-> (:db/spec schema)
-                    ;; fragile
-                    rest)]
-     ^{:key option}
+   (for [option (->> (tree-seq vector? identity (:db/spec schema))
+                     (filter (fn [node]
+                               (and
+                                 (vector? node)
+                                 (= :enum (first node)))))
+                     first
+                     rest
+                     (cons nil))]
+     ^{:key (or option "nil")}
      [:label {:tw "flex gap-1"}
       [:input {:type "radio"
                :checked (= value option)
