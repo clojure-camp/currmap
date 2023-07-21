@@ -296,9 +296,9 @@
                                   (state/save-entity!
                                     (merge (schema/blank :rating)
                                            user-rating ;; if there is a rating, use its :rating/id
-                                           {:rating/user [:user/id (:user/id @state/user)]
-                                            :rating/resource [:resource/id (:resource/id resource)]
-                                            :rating/outcome [:outcome/id (:outcome/id outcome)]
+                                           {:rating/user {:user/id (:user/id @state/user)}
+                                            :rating/resource {:resource/id (:resource/id resource)}
+                                            :rating/outcome {:outcome/id (:outcome/id outcome)}
                                             :rating/value value})))}])])])))
         [ui/text-button
          {:icon fa/fa-plus-solid

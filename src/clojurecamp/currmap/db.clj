@@ -37,7 +37,7 @@
   [db]
   (d/filter db
             (fn [_db datom]
-              (not= "user" (namespace (:a datom))))))
+              (not= :user/email (:a datom)))))
 
 (defn persist!
   []

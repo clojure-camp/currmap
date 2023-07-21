@@ -19,8 +19,8 @@
 (def RatingValue
   [:enum
    :rating.value/strong-no
-   :rating.value/no
-   :rating.value/yes
+   :rating.value/weak-no
+   :rating.value/weak-yes
    :rating.value/strong-yes])
 
 (def OutcomeType
@@ -41,13 +41,14 @@
    :db/cardinality (case cardinality
                      :one :db.cardinality/one
                      :many :db.cardinality/many)
-   :db/spec (let [r [:map-of {:error/message "should be a related entity"}
-                     [:and
-                      :keyword
-                      [:= (keyword
-                            (name entity-type)
-                            "id")]]
-                     :uuid]
+   :db/spec (let [k [:and
+                     :keyword
+                     [:= (keyword
+                           (name entity-type)
+                           "id")]]
+                  u :uuid
+                  r [:map-of {:error/message "should be a related entity"}
+                     k u]
                   s (case cardinality
                       :one r
                       :many [:vector {:min 1} r])]
@@ -151,8 +152,11 @@
 
 ;; given any entity, returns if valid
 ;; precompiled for performance
-(def valid?
+(def entity-validator
   (m/validator Entity))
+
+(defn valid? [x]
+  (entity-validator x))
 
 #_(valid?
     {:user/id #uuid "577d2583-b74b-4bc8-9af2-0671964c83b4"
@@ -178,3 +182,16 @@
       (assoc (id-key-for entity-type) (uuid/random))))
 
 #_(blank :topic)
+
+(defn can-edit?
+  [entity user-id role]
+  (cond
+    ;; all editable by admin
+    (= :role/admin role)
+    true
+    ;; resource - editable by all
+    (= (entity->entity-type entity) :resource)
+    true
+    ;; ratings - editable by user that created
+    (= (entity->entity-type entity) :rating)
+    (= user-id (:user/id (:rating/user entity)))))

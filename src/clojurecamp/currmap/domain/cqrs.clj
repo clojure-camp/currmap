@@ -25,6 +25,26 @@
       [?u :user/id ?user-id]]
     email))
 
+(defn user-id->email
+  [user-id]
+  (db/q
+    '[:find ?email .
+      :in $ ?user-id
+      :where
+      [?u :user/id ?user-id]
+      [?u :user/email ?email]]
+    user-id))
+
+(defn user-id->role
+  [user-id]
+  (let [email (user-id->email user-id)
+        {:role/keys [admin student]} (config/get :email-allowlist)]
+    (cond
+      (contains? admin email) :role/admin
+      (contains? student email) :role/student)))
+
+#_(user-id->role (email->user-id "alice@example.com"))
+
 (defn user-exists?
   [user-id]
   (boolean (db/q
@@ -47,7 +67,9 @@
              :user-id nil?}
     :conditions
     (fn [{:keys [email]}]
-      [[#(contains? (config/get :email-allowlist) email) :unauthorized "Email not in whitelist"]])
+      [[#(or (contains? (:role/admin (config/get :email-allowlist)) email)
+             (contains? (:role/student (config/get :email-allowlist)) email))
+        :unauthorized "Email not in whitelist"]])
     :effect
     (fn [{:keys [email]}]
       (let [email (normalize email)
@@ -66,8 +88,11 @@
     :params {:user-id uuid?
              :entity schema/valid?}
     :conditions
-    (fn [{:keys [user-id]}]
-      [[#(user-exists? user-id) :unauthorized "User not authorized"]])
+    (fn [{:keys [user-id entity]}]
+      [[#(user-exists? user-id) :unauthorized "User not authorized"]
+       [#(schema/can-edit? entity user-id
+                           (user-id->role user-id))
+        :unauthorized "User not authorized to upsert this entity"]])
     :effect
     (fn [{:keys [entity]}]
       (db/transact! [(remove-nil-values entity)])
