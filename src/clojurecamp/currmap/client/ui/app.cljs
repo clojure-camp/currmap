@@ -81,7 +81,7 @@
             [:tr {:tw "even:bg-gray-200"}
              [:td {:tw "align-top p-1"
                    :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
-              [:div.topic {:tw "group flex gap-1"}
+              [:div.topic {:tw "group flex gap-1 items-center"}
                [:span {:tw "whitespace-nowrap font-semibold"} (:topic/name topic)]
                (when @state/admin?
                  [:div {:tw "invisible group-hover:visible"}
