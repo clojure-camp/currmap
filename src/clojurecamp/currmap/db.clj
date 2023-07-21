@@ -53,6 +53,16 @@
   [& args]
   (apply d/transact! @data args))
 
+(defn pull-ident
+  [pattern [k v]]
+  (let [eid (d/q '[:find ?e .
+                   :in $ ?k ?v
+                   :where
+                   [?e ?k ?v]]
+                 @@data
+                 k v)]
+    (d/pull @@data pattern eid)))
+
 #_(initialize-empty!)
 #_(persist!)
 #_(initialize-from-file!)

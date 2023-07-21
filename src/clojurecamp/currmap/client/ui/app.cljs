@@ -83,16 +83,18 @@
                    :style {:padding-left (str (+ 0.5 (* (:depth topic) 1)) "em")}}
               [:div.topic {:tw "group flex gap-1"}
                [:span {:tw "whitespace-nowrap font-semibold"} (:topic/name topic)]
-               [ui/icon-button
-                {:icon fa/fa-pencil-alt-solid
-                 :on-click (fn []
-                             (state/open-editor!
-                               (state/entity-for-editing [:topic/id (:topic/id topic)])))}]
-               [ui/icon-button
-                {:icon fa/fa-plus-solid
-                 :on-click (fn []
-                             (state/open-editor! (merge (schema/blank :topic)
-                                                        {:topic/parent {:topic/id (:topic/id topic)}})))}]]]
+               (when @state/admin?
+                 [ui/icon-button
+                  {:icon fa/fa-pencil-alt-solid
+                   :on-click (fn []
+                               (state/open-editor!
+                                 (state/entity-for-editing [:topic/id (:topic/id topic)])))}])
+               (when @state/admin?
+                 [ui/icon-button
+                  {:icon fa/fa-plus-solid
+                   :on-click (fn []
+                               (state/open-editor! (merge (schema/blank :topic)
+                                                          {:topic/parent {:topic/id (:topic/id topic)}})))}])]]
              (let [outcomes-by-level (->> (:outcome/_topic topic)
                                           (group-by :outcome/level))]
                (doall
@@ -124,23 +126,26 @@
                                                ;; b/c we have an on-click-capture on root to close
                                                (.stopPropagation e))}
                              (:outcome/name outcome)]
-                            [ui/icon-button
-                             {:icon fa/fa-pencil-alt-solid
-                              :on-click (fn [_]
-                                          (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}]]]))]
-                     [ui/icon-button
-                      {:icon fa/fa-plus-solid
-                       :on-click (fn []
-                                   (state/open-editor! (merge (schema/blank :outcome)
-                                                              {:outcome/level level
-                                                               :outcome/topic {:topic/id (:topic/id topic)}})))}]]])))]])))
+                            (when @state/admin?
+                              [ui/icon-button
+                               {:icon fa/fa-pencil-alt-solid
+                                :on-click (fn [_]
+                                            (state/open-editor! (state/entity-for-editing [:outcome/id (:outcome/id outcome)])))}])]]))]
+                     (when @state/admin?
+                       [ui/icon-button
+                        {:icon fa/fa-plus-solid
+                         :on-click (fn []
+                                     (state/open-editor! (merge (schema/blank :outcome)
+                                                                {:outcome/level level
+                                                                 :outcome/topic {:topic/id (:topic/id topic)}})))}])]])))]])))
      [:tr
       [:td
-       [ui/text-button
-        {:label "Add a new Topic"
-         :icon fa/fa-plus-solid
-         :on-click (fn []
-                     (state/open-editor! (schema/blank :topic)))}]]]]]])
+       (when @state/admin?
+         [ui/text-button
+          {:label "Add a new Topic"
+           :icon fa/fa-plus-solid
+           :on-click (fn []
+                       (state/open-editor! (schema/blank :topic)))}])]]]]])
 
 (def color-strong-no "#ad1724")
 (def color-weak-no "#df8877")

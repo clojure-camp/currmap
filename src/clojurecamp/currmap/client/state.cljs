@@ -27,6 +27,8 @@
 (def active-editor-entity (r/cursor state [:db/active-editor-entity]))
 (def user (r/cursor state [:db/user]))
 (def active-outcome (r/cursor state [:db/active-outcome]))
+(def admin? (r/reaction (= (:user/role @user)
+                           :role/admin)))
 
 (defn set-active-outcome!
   [o]
@@ -89,8 +91,8 @@
     (remote-do!
       [:data
        {}
-       {:on-success (fn [{:keys [db user-id]}]
+       {:on-success (fn [{:keys [db user]}]
                       (db/initialize-db! db)
-                      (when user-id
-                        (swap! state assoc :db/user {:user/id user-id})))}])
+                      (when user
+                        (swap! state assoc :db/user user)))}])
     nil))

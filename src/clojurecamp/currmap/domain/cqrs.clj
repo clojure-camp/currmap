@@ -106,6 +106,10 @@
     :return
     (fn [{:keys [user-id]}]
       {:db (db/->edn (db/filter-users @@db/data))
-       :user-id user-id})}])
+       :user (assoc (db/pull-ident
+                      [:user/id
+                       :user/email]
+                      [:user/id user-id])
+               :user/role (user-id->role user-id))})}])
 
 (tada/register! (concat commands queries))
