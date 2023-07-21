@@ -125,7 +125,8 @@
                                                (state/set-active-outcome!
                                                  {:outcome-id (:outcome/id outcome)
                                                   :element (.. e -target)})
-                                               ;; b/c we have an on-click-capture on root to close
+                                               ;; b/c we have an on-click on root to close
+                                               ;; popover after every click
                                                (.stopPropagation e))}
                              (:outcome/name outcome)]
                             (when @state/admin?
@@ -200,6 +201,10 @@
 (defn outcome-popover-view []
   [:div#tooltip
    {:tw (when (nil? @state/active-outcome) "hidden")
+    :on-click (fn [e]
+                ;; b/c we have an on-click on root to close
+                ;; popover after every click
+                (.stopPropagation e))
     :ref (fn [el]
            (when el
              (.. js/Popper (createPopper
