@@ -41,6 +41,12 @@
                             (on-change option))}]
       (pr-str option)])])
 
+(defn maybe-abbreviate [s length]
+  (if (< length (count s))
+    (str (apply str (take (dec length) s))
+         "…")
+    s))
+
 (defmethod input-view :input/rel
   [{:keys [schema value on-change]}]
   ;; for a rel, value is expected to be, for example {:topic/id #uuid "..."}
@@ -53,7 +59,7 @@
                                  [?e ?name-key ?name]]
                                id-key name-key)
                      (map (fn [[id label]]
-                            [{id-key id} label]))
+                            [{id-key id} (maybe-abbreviate label 40)]))
                      ((fn [x]
                         (case (:db/cardinality schema)
                           :db.cardinality/one
