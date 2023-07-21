@@ -114,7 +114,7 @@
                           [:li.outcome
                            (when milestone?
                              [fa/fa-star-solid {:tw "w-3 h-3 -mt-1 -ml-4 inline mr-1"}])
-                           [:div {:tw "inline-flex gap-1 group/other"}
+                           [:div {:tw "inline-flex gap-1 group/other items-center"}
                             [:div {:tw ["cursor-pointer"
                                         (when milestone?
                                           "italic")
