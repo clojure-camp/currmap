@@ -5,7 +5,8 @@
                  [tada "0.2.2"]
                  [metosin/malli "0.11.0"]
                  [com.draines/postal "2.0.3"]
-                 [denistakeda/posh "0.5.9"]]
+                 [denistakeda/posh "0.5.9"]
+                 [com.hyperfiddle/rcf "20220926-202227"]]
 
   :plugins [[io.bloomventures/omni "0.32.2"]]
 
@@ -17,8 +18,7 @@
                  :timeout 200000}
 
   :profiles {:dev
-             {:source-paths ["dev-src"]
-              :dependencies [[com.hyperfiddle/rcf "20220926-202227"]]}
+             {:source-paths ["dev-src"]}
              :uberjar
              {:aot :all
               :prep-tasks [["omni" "compile"]
