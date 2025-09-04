@@ -5,6 +5,7 @@
     [clojurecamp.currmap.client.state :as state]
     [clojurecamp.currmap.client.ui.editor :as editor]
     [clojurecamp.currmap.client.ui.common :as ui]
+    [clojurecamp.currmap.client.ui.resources :as ui.resources]
     [clojurecamp.currmap.domain.ratings :as ratings]
     [clojurecamp.currmap.domain.schema :as schema]))
 
@@ -342,7 +343,7 @@
                   (when-let [email (js/prompt "Please enter your email:")]
                     (state/authenticate! email)))}]))
 
-(defn app-view []
+(defn stuff-view []
   [:<>
    ;; nested groups don't work in our version of girouette, create our own:
    [:style ".group\\/other:hover .group\\/other-hover\\:visible {visibility:visible}"]
@@ -356,3 +357,13 @@
       [main-table-view]
       [:div {:tw "absolute"}
        [outcome-popover-view]]])])
+
+
+(defn app-view []
+  (when @state/ready?
+    [:<>
+     [:div {:tw "absolute top-0 right-0"}
+      [auth-view]]
+     [ui.resources/resources-view]
+     #_[stuff-view]]))
+

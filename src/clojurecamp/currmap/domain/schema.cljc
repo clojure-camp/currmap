@@ -1,6 +1,7 @@
 (ns clojurecamp.currmap.domain.schema
   (:require
     [malli.core :as m]
+    [malli.transform :as mt]
     [bloom.commons.uuid :as uuid]))
 
 (def Email
@@ -51,7 +52,7 @@
                      k u]
                   s (case cardinality
                       :one r
-                      :many [:vector {:min 1} r])]
+                      :many [:sequential {:min 1} r])]
               (case required-or-optional
                 :required
                 s
@@ -59,6 +60,9 @@
                 [:maybe s]))
    :db/rel-entity-type entity-type
    :db/input :input/rel})
+
+(defn rel? [v]
+  (= :db.type/ref (:db/type v)))
 
 (def schema
   {:topic
@@ -119,9 +123,15 @@
 
 (defn entity->entity-type
   [entity]
-  (attr->entity-type (key (first entity))))
+  (->> (dissoc entity :db/id)
+       keys
+       (some (fn [k]
+                 (when (= "id" (name k))
+                   (keyword (namespace k))))))
+  #_(attr->entity-type (key (first entity))))
 
 #_(entity->entity-type {:topic/id "123"})
+
 
 (defn attr->schema
   [attr]
@@ -134,6 +144,15 @@
 (defn name-key-for
   [entity-type]
   (keyword (name entity-type) "name"))
+
+(defn rel-keys-for
+  [entity-type]
+  (->> (get schema entity-type)
+       (filter (fn [[_attr v]]
+                 (rel? v)))
+       (map key)))
+
+#_(rel-keys-for :resource)
 
 (defn malli-spec-for
   [entity-type]
@@ -150,17 +169,25 @@
              (map (fn [k]
                     [k (malli-spec-for k)])))))
 
-;; given any entity, returns if valid
-;; precompiled for performance
-(def entity-validator
-  (m/validator Entity))
-
-(defn valid? [x]
-  (entity-validator x))
+(def valid?
+  ;; precompiled for performance
+  (partial (m/validator Entity)))
 
 #_(valid?
     {:user/id #uuid "577d2583-b74b-4bc8-9af2-0671964c83b4"
      :user/email "alice@example.com"})
+
+(def strip-extra-keys
+  (partial
+   ;; precompiled for performance
+   (m/decoder Entity mt/strip-extra-keys-transformer)))
+
+#_(strip-extra-keys
+   {:resource/id #uuid "395a1060-78c7-4ccf-9344-258c937ef4ed"
+    :resource/url "https://caveman.mccue.dev/tutorial/clojure/3_start_an_nrepl_server"
+    :resource/outcome [{:outcome/id #uuid "e1eb660f-9323-4239-bbe6-057ac230279a"
+                        :outcome/name "Should be removed"
+                        :outcome/level :level/core}]})
 
 (defn pattern-for
   ;; ex "topic" -> [:topic/id ...]
@@ -168,7 +195,7 @@
   (->> (schema entity-type)
        (map (fn [[attr opts]]
               (cond
-                (= (:db/type opts) :db.type/ref)
+                (rel? opts)
                 {attr [(id-key-for (:db/rel-entity-type opts))]}
                 :else
                 attr)))))

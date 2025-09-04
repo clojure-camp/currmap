@@ -77,6 +77,10 @@
                  v))
        (into {})))
 
+(defn add-entity!
+  [entity]
+  (db/transact! [(remove-nil-values entity)]))
+
 (defn save-entity!
   [entity]
   (remote-do!
@@ -85,6 +89,17 @@
      {:on-success
       (fn []
         (db/transact! [(remove-nil-values entity)]))}]))
+
+(defn fetch-entity!
+  [ident]
+  (js/Promise.
+   (fn [resolve reject]
+     (remote-do!
+      [:entity
+       {:ident ident}
+       {:on-success (fn [v]
+                      (add-entity! v)
+                      (resolve v))}]))))
 
 (defonce _
   (do

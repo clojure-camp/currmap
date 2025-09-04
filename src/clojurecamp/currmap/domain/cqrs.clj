@@ -1,8 +1,12 @@
 (ns clojurecamp.currmap.domain.cqrs
   (:require
+    [bloom.commons.uuid :as uuid]
     [clojure.string :as string]
+    [clojure.set :as set]
+    [clojure.walk :as walk]
     [malli.core :as m]
     [tada.events.core :as tada]
+    [clojurecamp.currmap.ai :as ai]
     [clojurecamp.currmap.config :as config]
     [clojurecamp.currmap.db :as db]
     [clojurecamp.currmap.email :as email]
@@ -54,11 +58,68 @@
                [?u :user/id ?user-id]]
              user-id)))
 
-(defn remove-nil-values [m]
-  (->> m
-       (filter (fn [[_k v]]
-                 v))
-       (into {})))
+(defn prep-for-transact
+  "Remove nil values, because datascript does not allow them."
+  [m]
+  (walk/postwalk
+    (fn [x]
+      (if (map? x)
+        (->> (dissoc x :db/id)
+             (remove (fn [[_k v]]
+                       (nil? v)))
+             (into {}))
+        x))
+    m))
+
+(defn force-rels-transactions
+  "Creates a transaction that will force the relationships of the given entity to match exactly
+  those in the given entity map. It does so by retracting any existing relationships
+  that are not present in the new entity map, and then adding the new entity map itself.
+
+  (By default, Datascript merges relationships - ie. additive only)
+
+  Example:
+  (force-rels-transactions
+   {:resource/id 123
+    :resource/outcome [{:outcome/id 1}
+                       {:outcome/id 2}]})
+  => [[:db/retract 123 :resource/outcome {:outcome/id 3}]
+      {:resource/id 123
+       :resource/outcome [{:outcome/id 1}
+                          {:outcome/id 2}]}]"
+  [modified-entity]
+  (let [entity-type (schema/entity->entity-type modified-entity)
+        id-key (schema/id-key-for entity-type)
+        rel-attrs (set (schema/rel-keys-for entity-type))
+        ;; we only want to update rels that are present in the modified entity
+        relevant-rel-attrs (set/intersection (set (keys modified-entity))
+                                             rel-attrs)
+        original-entity-ref [id-key
+                             (get modified-entity id-key)]
+        original-entity (db/pull-ident
+                         (->> (schema/schema entity-type)
+                              (keep (fn [[attr opts]]
+                                      (when
+                                        (contains? relevant-rel-attrs attr)
+                                        {attr [(schema/id-key-for (:db/rel-entity-type opts))]}))))
+                         original-entity-ref)
+        retractions (->> original-entity
+                         (mapcat (fn [[rel-attr related]]
+                                   (->> related
+                                        (map (fn [v]
+                                               [:db/retract
+                                                original-entity-ref
+                                                rel-attr
+                                                ;; v is always just {:foo/id 123}
+                                                ;; so can get away with using first
+                                                (first v)]))))))]
+    (concat retractions
+            [modified-entity])))
+
+#_(force-rels-transactions
+   {:resource/id #uuid "e8f708e4-0720-4460-9e76-f912f6814918"
+    :resource/outcome [{:outcome/id #uuid "694463d7-c576-4f13-b0a2-eeaa9430ed55"}
+                       {:outcome/id #uuid "8944a640-5b4d-4743-9fbd-aff296f015f6"}]})
 
 (def commands
   [{:id :request-auth!
@@ -95,8 +156,35 @@
         :unauthorized "User not authorized to upsert this entity"]])
     :effect
     (fn [{:keys [entity]}]
-      (db/transact! [(remove-nil-values entity)])
-      (db/persist!))}])
+      (-> entity
+          prep-for-transact
+          ;; this endpoint assumes that if an object contains relation attributes
+          ;; it will pass ALL relationships (any existing ones not included will be retracted)
+          force-rels-transactions
+          db/transact!)
+      (db/persist!))}
+
+   {:id :scrape!
+    :params {:user-id any? ;; TODO
+             :url string?} ;; TODO validate
+    :conditions
+    (fn [{:keys [user-id url]}]
+      [[#(user-exists? user-id) :unauthorized "User not authorized"]])
+    :effect
+    (fn [{:keys [url]}]
+      (let [scrape #_(ai/scrape! {:url url})
+            (ai/mock-scrape! {:url url})
+            resource-id (uuid/random)
+            {:scrape/keys [description title outcomes]} scrape]
+        ;; TODO get resource name and description from ai
+        (db/transact! [{:resource/id resource-id
+                        :resource/url url
+                        :resource/outcome outcomes
+                        :resource/description description
+                        :resource/name title}])
+        (db/persist!)
+        {:resource-id resource-id}))
+    :return :tada/effect-return}])
 
 (def queries
   [{:id :data
@@ -111,6 +199,25 @@
                         [:user/id
                          :user/email]
                         [:user/id user-id])
-                 :user/role (user-id->role user-id)))})}])
+                 :user/role (user-id->role user-id)))})}
+
+   {:id :entity
+    :params {:user-id (fn [e]
+                        (or (nil? e)
+                            (uuid? e)))
+             :ident any?}
+    :return
+    (fn [{:keys [ident]}]
+      (let [[id-attr id] ident]
+        (db/q '[:find (pull ?e [*]) .
+                :in $ ?id-attr ?id
+                :where
+                [?e ?id-attr ?id]]
+              id-attr
+              id)))}])
+
+#_(tada/do! :entity {:user-id nil
+                     :ident [:resource/id #uuid "589c60a6-e4ac-49c7-a961-1d3738f38a6f"]})
 
 (tada/register! (concat commands queries))
+
