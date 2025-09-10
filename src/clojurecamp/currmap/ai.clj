@@ -1,11 +1,10 @@
 (ns clojurecamp.currmap.ai
   (:require
    [clojure.string :as string]
-   [clojurecamp.currmap.db :as db]
    [cheshire.core :as json]
-   [org.httpkit.client :as http]))
-
-(def oauth-token "REDACTED")
+   [org.httpkit.client :as http]
+   [clojurecamp.currmap.db :as db]
+   [clojurecamp.currmap.config :as config]))
 
 (defn prompt
   [{:keys [url topics]}]
@@ -59,7 +58,7 @@
                                                             :items {:type "integer"}}
                                                    :title {:type "string"}
                                                    :description {:type "string"}}}}}})
-           :oauth-token oauth-token})
+           :oauth-token (config/get :openai-token)})
         :body
         (json/parse-string keyword)
         :output

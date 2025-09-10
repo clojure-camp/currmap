@@ -11,6 +11,7 @@
    [:auth-token-secret string?]
    [:data-path string?]
    [:website-base-url string?]
+   [:openai-token string?]
    [:email-allowlist
     [:map
      [:role/admin [:set string?]]
