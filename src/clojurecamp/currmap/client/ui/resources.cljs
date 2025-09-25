@@ -1,11 +1,13 @@
 (ns clojurecamp.currmap.client.ui.resources
   (:require
+   [bloom.commons.pages :as pages]
    [malli.core :as m]
    [clojure.string :as string]
    [clojure.walk :as walk]
    [reagent.core :as r]
    [clojurecamp.currmap.domain.schema :as schema]
    [clojurecamp.currmap.client.state :as state]
+   [clojurecamp.currmap.client.ui.common :as ui]
    [clojurecamp.currmap.client.ui.editor :as editor]))
 
 (defonce editor-state
@@ -63,7 +65,7 @@
                              (if selected?
                                (remove-outcome! outcome)
                                (add-outcome! outcome)))
-                 :tw ["hover:bg-red-500 hover:cursor-pointer"
+                 :tw ["hover:bg-yellow-300 hover:cursor-pointer"
                       (when selected?
                         "bg-green-300")]}
            (:outcome/name outcome)]))]))
@@ -125,15 +127,18 @@
                                 [:topic/id root-topic-id])))
                        doall)
     query (r/atom "")]
-   [:div {:tw "bg-yellow-100"}
-    [:input {:tw "border rounded p-1"
+   [:div {:tw "bg-yellow-100 min-w-30em"}
+    [:input {:tw "border rounded p-1 w-full"
              :type "search"
+             :placeholder "Search..."
              :default-value @query
              :on-change (fn [e]
                           (reset! query (.. e -target -value)))}]
-    (for [topic (filter-outcomes nested-topics @query)]
-      ^{:key (:topic/id topic)}
-      [topic-view topic props])]))
+    [:div
+     {:tw "shrink-0 h-90vh overflow-y-auto"}
+     (for [topic (filter-outcomes nested-topics @query)]
+       ^{:key (:topic/id topic)}
+       [topic-view topic props])]]))
 
 (defn start-editing! [resource-id]
   (-> (state/fetch-entity!
@@ -181,47 +186,45 @@
     [:div "Scraping..."]
 
     :editor-state.stage/editing
-    [:div
-     [:div
-      [:h1 {:tw "font-bold"} "Resource Editor"]
-      [:button {:on-click (fn []
-                            (state/remote-do!
-                             [:upsert-entity!
-                              {:entity
-                               (->> @editor-state
-                                    :editor-state/resource-draft
-                                    schema/strip-extra-keys)}]))}
-       "Save"]]
-     [:div {:tw "flex"}
+    [:div {:tw "flex"}
+     [:div.column
+      [:div {:tw "flex justify-between p-1 bg-gray-300"}
+       [:h1 {:tw "font-bold"} "Editing " (:resource/id (:editor-state/resource-draft @editor-state))]
+       [ui/text-button {:label "Save"
+                        :on-click (fn []
+                                    (state/remote-do!
+                                     [:upsert-entity!
+                                      {:entity
+                                       (->> @editor-state
+                                            :editor-state/resource-draft
+                                            schema/strip-extra-keys)}]))}]]
 
-      [:div
-       (pr-str (:editor-state/resource-draft @editor-state))]
-      [outcome-picker-view
-       {:selected-outcome-ids (->> @editor-state
-                                   :editor-state/resource-draft
-                                   :resource/outcome
-                                   (map :outcome/id)
-                                   set)
-        :remove-outcome! (fn [outcome]
-                           (swap! editor-state update-in
-                                  [:editor-state/resource-draft :resource/outcome]
-                                  (fn [outcomes]
-                                    (remove #(= (:outcome/id %) (:outcome/id outcome)) outcomes))))
-        :add-outcome! (fn [outcome]
-                        (swap! editor-state update-in
-                               [:editor-state/resource-draft :resource/outcome]
-                               conj
-                               ;; backend only wants the :outcome/id to store the relation
-                               #_outcome
-                               (select-keys outcome [:outcome/id])))}]]]))
+      [:div {:tw "p-2"}
+       #_[editor/editor-view (:editor-state/resource-draft @editor-state)]
+       (pr-str (:editor-state/resource-draft @editor-state))]]
 
-(defn resources-view
+     [outcome-picker-view
+      {:selected-outcome-ids (->> @editor-state
+                                  :editor-state/resource-draft
+                                  :resource/outcome
+                                  (map :outcome/id)
+                                  set)
+       :remove-outcome! (fn [outcome]
+                          (swap! editor-state update-in
+                                 [:editor-state/resource-draft :resource/outcome]
+                                 (fn [outcomes]
+                                   (remove #(= (:outcome/id %) (:outcome/id outcome)) outcomes))))
+       :add-outcome! (fn [outcome]
+                       (swap! editor-state update-in
+                              [:editor-state/resource-draft :resource/outcome]
+                              conj
+                              ;; backend only wants the :outcome/id to store the relation
+                              #_outcome
+                              (select-keys outcome [:outcome/id])))}]]))
+
+(defn resources-list-view
   []
   [:div
-   [:h1 "Resources"]
-   [:button {:on-click (fn []
-                         (swap! editor-state assoc :editor-state/stage :editor-state.stage/start))}
-    "Add New Resource"]
    (let [resource-ids @(state/q '[:find [?id ...]
                                   :where
                                   [?e :resource/id ?id]])
@@ -233,15 +236,38 @@
                                    :resource/url]
                                  [:resource/id id])))
                         doall)]
-     (for [resource resources]
-       ^{:key (:resource/id resource)}
-       [:div {:tw "cursor-pointer"
-              :on-click (fn []
-                          (start-editing! (:resource/id resource)))}
-        [:div {:tw "font-bold"} (:resource/name resource)]
-        [:div {}
-         (:resource/title resource)
-         "(" (:resource/url resource) ")"]]))
+     (doall
+      (for [resource resources]
+        ^{:key (:resource/id resource)}
+        [:a {:tw ["block"
+                  (when (pages/active? [:resource-editor-resource {:resource-id (:resource/id resource)}])
+                    "font-bold")]
+             :href (pages/path-for [:resource-editor-resource {:resource-id (:resource/id resource)}])}
+         (:resource/name resource)
+         (when (:resource/url resource)
+           [:span " (" (:resource/url resource) ")"])])))])
+
+(defn resources-view
+  []
+  [:div {:tw "flex"}
+   [:div.column {:tw "w-1/4 shrink-0 bg-gray-100 h-95vh overflow-y-auto relative"}
+    [resources-list-view]
+    [:div {:tw "absolute top-0 right-0"}
+     [ui/text-button {:label "Add New Resource"
+                      :on-click (fn []
+                                  (swap! editor-state assoc :editor-state/stage :editor-state.stage/start))}]]]
+
    [resource-editor-view]])
 
+(def page
+  {:page/id :resource-editor
+   :page/view #'resources-view
+   :page/path "/resources-editor"})
 
+(def page-resource
+  {:page/id :resource-editor-resource
+   :page/view #'resources-view
+   :page/path "/resources-editor/:resource-id"
+   :page/parameters {:resource-id :uuid}
+   :page/on-enter! (fn [[_ {:keys [resource-id]}]]
+                    (start-editing! resource-id))})

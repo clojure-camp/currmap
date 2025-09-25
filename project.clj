@@ -1,9 +1,12 @@
 (defproject clojurecamp.currmap "0.1.0-SNAPSHOT"
 
   :dependencies [[io.bloomventures/omni "0.32.2"]
+                 [io.bloomventures/commons "0.15.1"]
+                 ;; require sci to fix edamame deps issue
+                 [borkdude/sci "0.2.7"]
                  [datascript "1.4.2"]
                  [tada "0.2.2"]
-                 [metosin/malli "0.11.0"]
+                 [metosin/malli "0.19.1"]
                  [com.draines/postal "2.0.3"]
                  [denistakeda/posh "0.5.9"]
                  [com.hyperfiddle/rcf "20220926-202227"]]
