@@ -205,14 +205,17 @@
                 ;; popover after every click
                 (.stopPropagation e))
     :ref (fn [el]
-           (when el
+           (when (and el
+                      ;; only need to show it if there is an active outcome
+                      ;; (if shown immediately, popper.js fails b/c it isn't loaded yet)
+                      @state/active-outcome)
              (.. js/Popper (createPopper
-                             (:element @state/active-outcome)
-                             el
-                             (clj->js
-                               {:placement "top"
-                                :modifiers [{:name "offset"
-                                             :options {:offset [0 8]}}]})))))}
+                            (:element @state/active-outcome)
+                            el
+                            (clj->js
+                             {:placement "top"
+                              :modifiers [{:name "offset"
+                                           :options {:offset [0 8]}}]})))))}
    [:style
     "#tooltip[data-popper-placement^='top'] > #arrow { bottom: -0.5em; }
     #tooltip[data-popper-placement^='top'] > #arrow > div { transform: rotate(225deg); }
