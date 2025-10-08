@@ -172,8 +172,8 @@
       [[#(user-exists? user-id) :unauthorized "User not authorized"]])
     :effect
     (fn [{:keys [url]}]
-      (let [scrape #_(ai/scrape! {:url url})
-            (ai/mock-scrape! {:url url})
+      (let [scrape (ai/scrape! {:url url})
+            #_(ai/mock-scrape! {:url url})
             resource-id (uuid/random)
             {:scrape/keys [description title outcomes]} scrape]
         ;; TODO get resource name and description from ai
