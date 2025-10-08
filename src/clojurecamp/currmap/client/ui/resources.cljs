@@ -10,29 +10,6 @@
    [clojurecamp.currmap.client.ui.common :as ui]
    [clojurecamp.currmap.client.ui.editor :as editor]))
 
-(defonce editor-state
-  (r/atom
-   {:editor-state/stage :editor-state.stage/nothing}
-   :validator (fn [value]
-                (if-let [errors (m/explain
-                                 [:map
-                                  [:editor-state/stage [:enum
-                                                        :editor-state.stage/nothing
-                                                        :editor-state.stage/start
-                                                        :editor-state.stage/scraping
-                                                        :editor-state.stage/editing]]
-                                  [:editor-state/resource-original {:optional true} :any #_(schema/malli-spec-for :resource)]
-                                  [:editor-state/resource-draft {:optional true} :any #_(schema/malli-spec-for :resource)]]
-                                 value)]
-                  (do
-                    (println errors)
-                    false)
-                  true))))
-
-;; not-editing
-;; querying
-;; editing
-
 #_(defn resource-editor-view
   [resource-id]
   [editor/editor-view
@@ -140,87 +117,95 @@
        ^{:key (:topic/id topic)}
        [topic-view topic props])]]))
 
-(defn start-editing! [resource-id]
-  (-> (state/fetch-entity!
-       [:resource/id resource-id])
-      (.then (fn [_]
-               (let [resource @(state/pull-ident
-                                  '[:resource/id
-                                    :resource/name
-                                    :resource/url
-                                    :resource/description
-                                    {:resource/outcome [:outcome/id
-                                                        :outcome/name]}]
-                                  [:resource/id resource-id])]
-                   (swap! editor-state (fn [state]
-                                         (-> state
-                                             (assoc :editor-state/stage :editor-state.stage/editing)
-                                             (assoc :editor-state/resource-original resource)
-                                             (assoc :editor-state/resource-draft resource)))))))))
+(defn resource-editor-editing-view
+  [{:keys [resource-id]}]
+  (r/with-let
+   [editor-state (r/atom {}
+                         :validator (fn [value]
+                                      (if-let [errors (m/explain
+                                                       [:map
+                                                        [:editor-state/resource-original {:optional true} :any #_(schema/malli-spec-for :resource)]
+                                                        [:editor-state/resource-draft {:optional true} :any #_(schema/malli-spec-for :resource)]]
+                                                       value)]
+                                        (do
+                                          (println errors)
+                                          false)
+                                        true)))
+    _load_ (-> (state/fetch-entity!
+                [:resource/id resource-id])
+               (.then (fn [_]
+                        (let [resource @(state/pull-ident
+                                         '[:resource/id
+                                           :resource/name
+                                           :resource/url
+                                           :resource/description
+                                           {:resource/outcome [:outcome/id
+                                                               :outcome/name]}]
+                                         [:resource/id resource-id])]
+                          (swap! editor-state (fn [state]
+                                                (-> state
+                                                    (assoc :editor-state/resource-original resource)
+                                                    (assoc :editor-state/resource-draft resource))))))))]
+   (when (:editor-state/resource-draft @editor-state)
+     [:div {:tw "flex"}
+      [:div.column
+       [:div {:tw "flex justify-between p-1 bg-gray-300"}
+        [:h1 {:tw "font-bold"} "Editing " (:resource/id (:editor-state/resource-draft @editor-state))]
+        [ui/text-button {:label "Save"
+                         :on-click (fn []
+                                     (state/remote-do!
+                                      [:upsert-entity!
+                                       {:entity
+                                        (->> @editor-state
+                                             :editor-state/resource-draft
+                                             schema/strip-extra-keys)}]))}]]
 
-(defn resource-editor-view
+       [:div {:tw "p-2"}
+        #_[editor/editor-view (:editor-state/resource-draft @editor-state)]
+        (pr-str (:editor-state/resource-draft @editor-state))]]
+
+      [outcome-picker-view
+       {:selected-outcome-ids (->> @editor-state
+                                   :editor-state/resource-draft
+                                   :resource/outcome
+                                   (map :outcome/id)
+                                   set)
+        :remove-outcome! (fn [outcome]
+                           (swap! editor-state update-in
+                                  [:editor-state/resource-draft :resource/outcome]
+                                  (fn [outcomes]
+                                    (remove #(= (:outcome/id %) (:outcome/id outcome)) outcomes))))
+        :add-outcome! (fn [outcome]
+                        (swap! editor-state update-in
+                               [:editor-state/resource-draft :resource/outcome]
+                               conj
+                               ;; backend only wants the :outcome/id to store the relation
+                               #_outcome
+                               (select-keys outcome [:outcome/id])))}]])))
+
+(defn resource-editor-new-view
   []
-  (case (:editor-state/stage @editor-state)
-    :editor-state.stage/nothing
-    nil
-
-    :editor-state.stage/start
-    [:form {:on-submit (fn [e]
-                         (.preventDefault e)
-                         (swap! editor-state assoc :editor-state/stage :editor-state.stage/scraping)
-                         (state/remote-do!
-                          [:scrape!
-                           {:url (.-value (aget (.-elements (.-target e)) "url"))}
-                           {:on-success
-                            (fn [{:keys [resource-id]}]
-                              (start-editing! resource-id))
-                            :on-error (fn []
-                                        (js/alert "Error creating resource."))}]))}
-     [:label
-      [:div "URL"]
-      [:input {:placeholder "https://example.com"
-               :name "url"}]]
-     [:button "Scrape"]]
-
-    :editor-state.stage/scraping
-    [:div "Scraping..."]
-
-    :editor-state.stage/editing
-    [:div {:tw "flex"}
-     [:div.column
-      [:div {:tw "flex justify-between p-1 bg-gray-300"}
-       [:h1 {:tw "font-bold"} "Editing " (:resource/id (:editor-state/resource-draft @editor-state))]
-       [ui/text-button {:label "Save"
-                        :on-click (fn []
-                                    (state/remote-do!
-                                     [:upsert-entity!
-                                      {:entity
-                                       (->> @editor-state
-                                            :editor-state/resource-draft
-                                            schema/strip-extra-keys)}]))}]]
-
-      [:div {:tw "p-2"}
-       #_[editor/editor-view (:editor-state/resource-draft @editor-state)]
-       (pr-str (:editor-state/resource-draft @editor-state))]]
-
-     [outcome-picker-view
-      {:selected-outcome-ids (->> @editor-state
-                                  :editor-state/resource-draft
-                                  :resource/outcome
-                                  (map :outcome/id)
-                                  set)
-       :remove-outcome! (fn [outcome]
-                          (swap! editor-state update-in
-                                 [:editor-state/resource-draft :resource/outcome]
-                                 (fn [outcomes]
-                                   (remove #(= (:outcome/id %) (:outcome/id outcome)) outcomes))))
-       :add-outcome! (fn [outcome]
-                       (swap! editor-state update-in
-                              [:editor-state/resource-draft :resource/outcome]
-                              conj
-                              ;; backend only wants the :outcome/id to store the relation
-                              #_outcome
-                              (select-keys outcome [:outcome/id])))}]]))
+  (r/with-let
+   [scraping? (r/atom false)]
+   (if (not @scraping?)
+     [:form {:on-submit (fn [e]
+                          (.preventDefault e)
+                          (reset! scraping? true)
+                          (state/remote-do!
+                           [:scrape!
+                            {:url (.-value (aget (.-elements (.-target e)) "url"))}
+                            {:on-success
+                             (fn [{:keys [resource-id]}]
+                               (pages/navigate-to! [:resource-editor-resource {:resource-id resource-id}]))
+                             :on-error (fn []
+                                         (js/alert "Error creating resource."))}]))}
+      [:label
+       [:div "URL"]
+       [:input {:placeholder "https://example.com"
+                :name "url"}]]
+      [:button "Scrape"]]
+     ;; scraping
+     [:div "Scraping..."])))
 
 (defn resources-list-view
   []
@@ -248,26 +233,33 @@
            [:span " (" (:resource/url resource) ")"])])))])
 
 (defn resources-view
-  []
+  [[page-id {:keys [resource-id]}]]
   [:div {:tw "flex"}
    [:div.column {:tw "w-1/4 shrink-0 bg-gray-100 h-95vh overflow-y-auto relative"}
     [resources-list-view]
     [:div {:tw "absolute top-0 right-0"}
-     [ui/text-button {:label "Add New Resource"
-                      :on-click (fn []
-                                  (swap! editor-state assoc :editor-state/stage :editor-state.stage/start))}]]]
+     [:a {:href (pages/path-for [:resource-editor-new])}
+      "Add New Resource"]]]
 
-   [resource-editor-view]])
+   (case page-id
+     :resource-editor
+     nil
 
-(def page
-  {:page/id :resource-editor
-   :page/view #'resources-view
-   :page/path "/resources-editor"})
+     :resource-editor-new
+     [resource-editor-new-view]
 
-(def page-resource
-  {:page/id :resource-editor-resource
-   :page/view #'resources-view
-   :page/path "/resources-editor/:resource-id"
-   :page/parameters {:resource-id :uuid}
-   :page/on-enter! (fn [[_ {:keys [resource-id]}]]
-                    (start-editing! resource-id))})
+     :resource-editor-resource
+     ^{:key resource-id} ;; add key need to force remount
+     [resource-editor-editing-view {:resource-id resource-id}])])
+
+(def pages
+  [{:page/id :resource-editor
+    :page/view #'resources-view
+    :page/path "/resources-editor"}
+   {:page/id :resource-editor-new
+    :page/view #'resources-view
+    :page/path "/resources-editor/new"}
+   {:page/id :resource-editor-resource
+    :page/view #'resources-view
+    :page/path "/resources-editor/resource/:resource-id"
+    :page/parameters {:resource-id :uuid}}])

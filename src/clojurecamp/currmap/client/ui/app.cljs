@@ -38,6 +38,6 @@
 
 (defonce _
   (pages/initialize!
-   [ui.spreadsheet/page
-    ui.resources/page
-    ui.resources/page-resource]))
+   (concat
+    [ui.spreadsheet/page]
+    ui.resources/pages)))
