@@ -131,6 +131,7 @@
                                           (println errors)
                                           false)
                                         true)))
+    resource-draft (r/cursor editor-state [:editor-state/resource-draft])
     _load_ (-> (state/fetch-entity!
                 [:resource/id resource-id])
                (.then (fn [_]
@@ -161,8 +162,10 @@
                                              schema/strip-extra-keys)}]))}]]
 
        [:div {:tw "p-2"}
-        #_[editor/editor-view (:editor-state/resource-draft @editor-state)]
-        (pr-str (:editor-state/resource-draft @editor-state))]]
+        #_[:pre {:tw "text-xs whitespace-pre-wrap"}
+         (with-out-str (cljs.pprint/pprint (:editor-state/resource-draft @editor-state)))]
+        (when @resource-draft
+          [editor/embeddable-editor-view {:entity resource-draft}])]]
 
       [outcome-picker-view
        {:selected-outcome-ids (->> @editor-state

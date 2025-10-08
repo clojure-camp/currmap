@@ -42,14 +42,10 @@
    :db/cardinality (case cardinality
                      :one :db.cardinality/one
                      :many :db.cardinality/many)
-   :db/spec (let [k [:and
-                     :keyword
-                     [:= (keyword
-                           (name entity-type)
-                           "id")]]
-                  u :uuid
-                  r [:map-of {:error/message "should be a related entity"}
-                     k u]
+   :db/spec (let [r [:map ;; open map, allowing other keys
+                     [(keyword
+                       (name entity-type)
+                       "id") :uuid]]
                   s (case cardinality
                       :one r
                       :many [:sequential {:min 1} r])]

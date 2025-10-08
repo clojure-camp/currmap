@@ -14,7 +14,7 @@
 (defmethod input-view :input/text
   [{:keys [schema value on-change]}]
   [:input
-   {:tw "border border-gray-500 p-1"
+   {:tw "w-full border border-gray-500 p-1"
     :default-value value
     :on-change (fn [e]
                  (let [v (.. e -target -value)]
@@ -68,16 +68,21 @@
                           (identity x)))))
         ;; going through this hashing hoop to effectively allow for object values
         ;; b/c :value on option gets cast to string
-        str-hash (fn [x] (str (hash x)))
+        str-hash (fn [x] (str (hash (id-key x))))
         hash->value (zipmap (map str-hash (map first options))
                             (map first options))]
     [:div
-     [:select {:tw "border border-gray-500 p-1"
-               :default-value (case (:db/cardinality schema)
-                                :db.cardinality/one
-                                (str-hash value)
-                                :db.cardinality/many
-                                (map str-hash value))
+     [:select {:tw ["border border-gray-500 p-1"
+                    (case (:db/cardinality schema)
+                      :db.cardinality/one
+                      "1em"
+                      :db.cardinality/many
+                      "h-20em")]
+               :value (case (:db/cardinality schema)
+                        :db.cardinality/one
+                        (str-hash value)
+                        :db.cardinality/many
+                        (map str-hash value))
                :multiple (case (:db/cardinality schema)
                            :db.cardinality/one
                            false
@@ -105,49 +110,57 @@
   [:div {:tw "p-1"}
    (pr-str value)])
 
+(defn embeddable-editor-view
+  ;; entity is an atom
+  [{:keys [entity]}]
+  (let [errors (me/humanize (m/explain (schema/malli-spec-for
+                                        (schema/entity->entity-type @entity))
+                                       @entity))]
+    [:form.editor
+     {:tw "bg-white border flex flex-col w-full h-full"
+      :on-submit (fn [e]
+                   (.preventDefault e)
+                   (state/save-entity! @entity)
+                   (state/close-editor!))}
+     #_[:div {} (pr-str @entity)]
+     #_[:div {} (pr-str errors)]
+
+     [:table
+      [:tbody
+       (for [[k v] @entity]
+         ^{:key k}
+         [:tr
+          [:td {:tw "p-1 align-top"} (pr-str k)]
+          [:td
+
+           [input-view
+            {:schema (schema/attr->schema k)
+             :value v
+             :on-change (fn [new-value]
+                          (swap! entity assoc k new-value))}]
+           (when-let [error (get errors k)]
+             [:div.error {:tw "text-red-500 flex items-center gap-1"}
+              [fa/fa-exclamation-triangle-solid {:tw "w-4 h-4"}]
+              (first error)])]])]]
+     [:div.gap {:tw "grow"}]
+     [:div {:tw "flex justify-between"}
+      [ui/text-button
+       {:label "Cancel"
+        :variant :secondary
+        :type "button"
+        :on-click (fn []
+                    (state/close-editor!))}]
+      [ui/text-button
+       {:label "Save"
+        :disabled (seq errors)}]]]) )
+
 (defn editor-view
   [starter-entity]
-  (r/with-let [entity (r/atom starter-entity)]
-    (let [errors (me/humanize (m/explain (schema/malli-spec-for
-                                           (schema/entity->entity-type @entity))
-                                         @entity))]
-      [:div.wrapper {:tw "fixed p-10 inset-1/4 z-50"
-                     :on-click (fn [e]
-                                 ;; b/c we have an on-click on root to close
-                                 ;; popover after every click
-                                 (.stopPropagation e))}
-       [:form.editor
-        {:tw "bg-white border flex flex-col w-full h-full"
-         :on-submit (fn [e]
-                      (.preventDefault e)
-                      (state/save-entity! @entity)
-                      (state/close-editor!))}
-        #_[:div {} (pr-str @entity)]
-        #_[:div {} (pr-str errors)]
-        [:table
-         [:tbody
-          (for [[k v] @entity]
-            ^{:key k}
-            [:tr
-             [:td {:tw "p-1 align-top"} (pr-str k)]
-             [:td
-              [input-view
-               {:schema (schema/attr->schema k)
-                :value v
-                :on-change (fn [new-value]
-                             (swap! entity assoc k new-value))}]
-              (when-let [error (get errors k)]
-                [:div.error {:tw "text-red-500 flex items-center gap-1"}
-                 [fa/fa-exclamation-triangle-solid {:tw "w-4 h-4"}]
-                 (first error)])]])]]
-        [:div.gap {:tw "grow"}]
-        [:div {:tw "flex justify-between"}
-         [ui/text-button
-          {:label "Cancel"
-           :variant :secondary
-           :type "button"
-           :on-click (fn []
-                       (state/close-editor!))}]
-         [ui/text-button
-          {:label "Save"
-           :disabled (seq errors)}]]]])))
+  (r/with-let
+   [entity (r/atom starter-entity)]
+   [:div.wrapper {:tw "fixed p-10 inset-1/8 z-50"
+                  :on-click (fn [e]
+                              ;; b/c we have an on-click on root to close
+                              ;; popover after every click
+                              (.stopPropagation e))}
+    [embeddable-editor-view {:entity entity}]]))
