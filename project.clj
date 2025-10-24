@@ -9,6 +9,7 @@
                  [metosin/malli "0.19.1"]
                  [com.draines/postal "2.0.3"]
                  [denistakeda/posh "0.5.9"]
+                 [commons-validator/commons-validator "1.10.0"]
                  [com.hyperfiddle/rcf "20220926-202227"]]
 
   :plugins [[io.bloomventures/omni "0.32.2"]]

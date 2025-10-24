@@ -2,7 +2,10 @@
   (:require
     [malli.core :as m]
     [malli.transform :as mt]
-    [bloom.commons.uuid :as uuid]))
+    [bloom.commons.uuid :as uuid])
+  #?(:clj
+     (:import
+      [org.apache.commons.validator.routines UrlValidator])))
 
 (def Email
   ;; TODO could be better
@@ -27,6 +30,16 @@
 (def OutcomeType
   [:enum
    :outcome.type/milestone])
+
+(defn valid-url?
+  [s]
+  #?(:clj
+     (let [url-validator (UrlValidator.)]
+       (.isValid url-validator s))
+     :cljs true))
+
+#_(valid-url? "https://example.com")
+#_(valid-url? "some junk")
 
 (def URL
   [:re {:error/message "should be a link, starting with https://"} #"https://.*"])

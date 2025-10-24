@@ -166,7 +166,7 @@
 
    {:id :scrape!
     :params {:user-id any? ;; TODO
-             :url string?} ;; TODO validate
+             :url schema/valid-url?}
     :conditions
     (fn [{:keys [user-id url]}]
       [[#(user-exists? user-id) :unauthorized "User not authorized"]])
