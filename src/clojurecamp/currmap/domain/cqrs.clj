@@ -105,14 +105,21 @@
                          original-entity-ref)
         retractions (->> original-entity
                          (mapcat (fn [[rel-attr related]]
-                                   (->> related
-                                        (map (fn [v]
-                                               [:db/retract
-                                                original-entity-ref
-                                                rel-attr
-                                                ;; v is always just {:foo/id 123}
-                                                ;; so can get away with using first
-                                                (first v)]))))))]
+                                   (case (:db/cardinality (schema/attr->schema rel-attr))
+                                     :db.cardinality/one
+                                     ;; don't need to retract
+                                     []
+                                     :db.cardinality/many
+                                     (->> related
+                                          (map (fn [v]
+                                                 [:db/retract
+                                                  original-entity-ref
+                                                  rel-attr
+                                                  ;; v is {:foo/id 123}
+                                                  ;; use first to get the MapEntry
+                                                  ;; which is the same as the ident
+                                                  ;; [:foo/id 123]
+                                                  (first v)])))))))]
     (concat retractions
             [modified-entity])))
 
