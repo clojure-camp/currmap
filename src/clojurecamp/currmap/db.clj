@@ -55,7 +55,7 @@
 
 (defn pull-ident
   [pattern [k v]]
-  (let [eid (d/q '[:find ?e .
+  (when-let [eid (d/q '[:find ?e .
                    :in $ ?k ?v
                    :where
                    [?e ?k ?v]]
