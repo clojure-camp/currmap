@@ -1,8 +1,9 @@
 (ns seed
   (:require
-    [bloom.commons.uuid :as uuid]
-    [datascript.core :as d]
-    [clojurecamp.currmap.db :as db]))
+   [bloom.commons.uuid :as uuid]
+   [clojure.edn :as edn]
+   [clojurecamp.currmap.db :as db]
+   [datascript.core :as d]))
 
 (defonce id
   (memoize (fn [_seed]
@@ -105,9 +106,67 @@
     :rating/user [:user/id (id "user-bob")]
     :rating/resource [:resource/id (id "resource-three")]
     :rating/outcome [:outcome/id (id "outcome-macro")]
-    :rating/value :rating.value/strong-yes}])
+    :rating/value :rating.value/strong-yes}
+
+   ;; badges and stuff
+
+   {:badge/id (id "clojure-i-badge")
+    :badge/topic [:topic/id (id "topic-clojure")]
+    :badge/outcome [[:outcome/id (id "outcome-loop")]
+                    [:outcome/id (id "outcome-atoms")]]
+    :badge/name "Clojure I"}
+   {:badge/id (id "clojure-ii-badge")
+    :badge/prerequisite [[:badge/id (id "clojure-i-badge")]]
+    :badge/topic [:topic/id (id "topic-clojure")]
+    :badge/outcome [[:outcome/id (id "outcome-macro")]]
+    :badge/name "Clojure II"}
+   {:badge/id (id "clojure-iii-badge")
+    :badge/prerequisite [[:badge/id (id "clojure-ii-badge")]]
+    :badge/topic [:topic/id (id "topic-clojure")]
+    :badge/outcome [[:outcome/id (id "outcome-refs")]]
+    :badge/name "Clojure III"}
+
+   {:user/id (id "user-alice")
+    :user/badge-working-towards [[:badge/id (id "clojure-iii-badge")]]
+    :user/badge-in-progress [[:badge/id (id "clojure-ii-badge")]]}
+
+   {:assertion/id (id "assertion-1")
+    :assertion/badge [:badge/id (id "clojure-i-badge")]
+    :assertion/user [:user/id (id "user-alice")]
+    :assertion/issued-by [:user/id (id "user-bob")]
+    :assertion/issued-at #inst "2025-01-15T10:00:00.000-00:00"}
+
+   {:assertion/id (id "assertion-2")
+    :assertion/badge [:badge/id (id "clojure-ii-badge")]
+    :assertion/user [:user/id (id "user-alice")]
+    :assertion/issued-by [:user/id (id "user-alice")]
+    :assertion/issued-at #inst "2024-01-15T10:00:00.000-00:00"}
+
+
+   ])
 
 (defn seed! []
   (d/transact! @db/data seed-data))
 
 #_(seed!)
+
+#_(d/transact @db/data [{:user/id (uuid/random)
+                         :user/email "rafal.dittwald@gmail.com"}])
+
+(defn badge-graph-entities []
+  (->> (slurp "dev-resources/graph.edn")
+       edn/read-string
+       (mapcat (fn [[category chains]]
+              (->> chains
+                   (mapcat (fn [chain]
+                          (->> chain
+                               (cons nil)
+                               (partition 2 1)
+                               (map (fn [[prereq-id badge-id]]
+                                      (merge
+                                       {:badge/id (id badge-id)
+                                        :badge/name badge-id}
+                                       (when prereq-id
+                                         {:badge/prerequisite [[:badge/id (id prereq-id)]]}))           ))))))))))
+
+#_(d/transact @db/data (badge-graph-entities))

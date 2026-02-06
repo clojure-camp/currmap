@@ -3,6 +3,7 @@
    [bloom.commons.pages :as pages]
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.resources :as ui.resources]
+   [clojurecamp.currmap.client.ui.badges :as badges]
    [clojurecamp.currmap.client.ui.common :as ui]
    [clojurecamp.currmap.client.ui.spreadsheet :as ui.spreadsheet]))
 
@@ -21,11 +22,12 @@
 
 (defn app-view []
   (when @state/ready?
-    [:<>
+    [:div {:tw "flex flex-col min-h-screen"}
      [:div.nav {:tw "flex space-between gap-2 relative w-full z-100"}
       (doall ;; doall needed b/c pages/active? derefs an atom
        (for [[path label] [[[:spreadsheet] "Spreadsheet"]
-                           [[:resource-editor] "Resource Editor"]]]
+                           [[:resource-editor] "Resource Editor"]
+                           [[:badges] "Badges"]]]
          ^{:key path}
          [:a {:href (pages/path-for path)
               :tw ["px-2 p-1 text-white bg-blue-500"
@@ -40,4 +42,5 @@
   (pages/initialize!
    (concat
     [ui.spreadsheet/page]
+    badges/pages
     ui.resources/pages)))

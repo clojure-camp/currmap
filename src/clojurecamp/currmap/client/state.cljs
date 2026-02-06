@@ -81,6 +81,15 @@
   [entity]
   (db/transact! [(remove-nil-values entity)]))
 
+(defn transact!
+  [tx-data]
+  (remote-do!
+   [:transact!
+    {:txs tx-data}
+    {:on-success
+     (fn []
+       (db/transact! tx-data))}]))
+
 (defn save-entity!
   [entity]
   (remote-do!

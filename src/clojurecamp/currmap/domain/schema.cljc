@@ -112,7 +112,27 @@
 
    :user
    {:user/id id
-    :user/email {:db/spec Email}}})
+    :user/email {:db/spec Email}
+    :user/badge-working-towards (rel :many :badge :optional)
+    :user/badge-in-progress (rel :many :badge :optional)}
+
+   :badge
+   {:badge/id id
+    :badge/prerequisite (rel :many :badge :optional)
+    :badge/topic (rel :one :topic :required)
+    :badge/outcome (rel :many :outcome :optional)
+    :badge/name {:db/spec NonBlankString
+                 :db/input :input/text}
+    :badge/description {:db/spec [:maybe NonBlankString]
+                        :db/input :input/text}}
+
+   :assertion
+   {:assertion/id id
+    :assertion/badge (rel :one :badge :required)
+    :assertion/user (rel :one :user :required)
+    :assertion/issued-by (rel :one :user :required)
+    :assertion/issued-at {:db/spec inst?
+                          :db/input :input/datetime}}})
 
 (def datascript-schema
   (->> schema
@@ -145,6 +165,8 @@
 (defn attr->schema
   [attr]
   (get-in schema [(attr->entity-type attr) attr]))
+
+#_(attr->schema :rating/user)
 
 (defn id-key-for
   [entity-type]
@@ -230,4 +252,9 @@
     true
     ;; ratings - editable by user that created
     (= (entity->entity-type entity) :rating)
-    (= user-id (:user/id (:rating/user entity)))))
+    (= user-id (:user/id (:rating/user entity)))
+    ;; assertions - can self grant
+    (= (entity->entity-type entity) :assertion)
+    (= user-id
+       (:user/id (:assertion/user entity))
+       (:user/id (:assertion/issued-by entity)))))

@@ -49,14 +49,15 @@
 
 #_(user-id->role (email->user-id "alice@example.com"))
 
-(defn user-exists?
-  [user-id]
+(defn entity-exists?
+  [id-key entity-id]
   (boolean (db/q
-             '[:find ?u .
-               :in $ ?user-id
-               :where
-               [?u :user/id ?user-id]]
-             user-id)))
+            '[:find ?u .
+              :in $ ?id-key ?entity-id
+              :where
+              [?u ?id-key ?entity-id]]
+            id-key
+            entity-id)))
 
 (defn prep-for-transact
   "Remove nil values, because datascript does not allow them."
@@ -123,10 +124,21 @@
     (concat retractions
             [modified-entity])))
 
+
 #_(force-rels-transactions
-   {:resource/id #uuid "e8f708e4-0720-4460-9e76-f912f6814918"
+   {:resource/id #uuid "0199c4c5-3260-770b-929f-9bf3dc298207"
     :resource/outcome [{:outcome/id #uuid "694463d7-c576-4f13-b0a2-eeaa9430ed55"}
                        {:outcome/id #uuid "8944a640-5b4d-4743-9fbd-aff296f015f6"}]})
+
+#_(force-rels-transactions
+   {:rating/id #uuid "019a179a-50cd-742e-a295-b34e0c7fcd68"
+    :rating/user {:user/id "123"}})
+
+(defn user-exists?-condition [user-id]
+  [#(entity-exists? :user/id user-id) :unauthorized "User not authorized"])
+
+(defn entity-exists?-condition [id-key entity-id]
+  [#(entity-exists? id-key entity-id) :not-found "Entity does not exist"])
 
 (def commands
   [{:id :request-auth!
@@ -152,12 +164,23 @@
                               :email email}))
         {:status 200}))}
 
+   {:id :transact!
+    :params {:user-id uuid?
+             :txs any?}
+    :conditions
+    (fn [{:keys [user-id entity]}]
+      [(user-exists?-condition user-id)])
+    :effect
+    (fn [{:keys [txs]}]
+      (db/transact! txs)
+      (db/persist!))}
+
    {:id :upsert-entity!
     :params {:user-id uuid?
              :entity schema/valid?}
     :conditions
     (fn [{:keys [user-id entity]}]
-      [[#(user-exists? user-id) :unauthorized "User not authorized"]
+      [(user-exists?-condition user-id)
        [#(schema/can-edit? entity user-id
                            (user-id->role user-id))
         :unauthorized "User not authorized to upsert this entity"]])
@@ -176,7 +199,9 @@
              :url schema/valid-url?}
     :conditions
     (fn [{:keys [user-id url]}]
-      [[#(user-exists? user-id) :unauthorized "User not authorized"]])
+      [(user-exists?-condition user-id)
+       ;; skip if same url already exists?
+       ])
     :effect
     (fn [{:keys [url]}]
       (let [scrape (ai/scrape! {:url url})
@@ -191,7 +216,81 @@
                         :resource/name title}])
         (db/persist!)
         {:resource-id resource-id}))
-    :return :tada/effect-return}])
+    :return :tada/effect-return}
+
+   {:id :api/self-grant-badge!
+    :params {:user-id uuid?
+             :badge-id uuid?}
+    :conditions
+    (fn [{:keys [user-id badge-id]}]
+      [(user-exists?-condition user-id)
+       (entity-exists?-condition :badge/id badge-id)
+       ;; TODO doesn't already have this badge
+       ])
+    :effect
+    (fn [{:keys [user-id badge-id]}]
+      (db/transact!
+        [(merge (schema/blank :assertion)
+                {:assertion/badge [:badge/id badge-id]
+                 :assertion/user [:user/id user-id]
+                 :assertion/issued-by [:user/id user-id]
+                 :assertion/issued-at (java.util.Date.)})])
+      (db/persist!))}
+
+   {:id :api/grant-badge!
+    :params {:user-id uuid?
+             :target-user-id uuid?
+             :badge-id uuid?}
+    :conditions
+    (fn [{:keys [user-id target-user-id badge-id]}]
+      [(user-exists?-condition user-id)
+       (entity-exists?-condition :user/id target-user-id)
+       (entity-exists?-condition :badge/id badge-id)
+       ;; TODO the granting user has this badge
+       ])
+    :effect
+    (fn [{:keys [user-id target-user-id badge-id]}]
+      (db/transact!
+        [(merge (schema/blank :assertion)
+                {:assertion/badge [:badge/id badge-id]
+                 :assertion/user [:user/id target-user-id]
+                 :assertion/issued-by [:user/id user-id]
+                 :assertion/issued-at (java.util.Date.)})])
+      (db/persist!))}
+
+   {:id :api/update-working-towards-badge!
+    :params {:user-id uuid?
+             :badge-id uuid?
+             :add? boolean?}
+    :conditions
+    (fn [{:keys [user-id badge-id]}]
+      [(user-exists?-condition user-id)
+       (entity-exists?-condition :badge/id badge-id)])
+    :effect
+    (fn [{:keys [user-id badge-id add?]}]
+      (db/transact! [[(if add? :db/add :db/retract)
+                      [:user/id user-id]
+                      :user/badge-working-towards
+                      [:badge/id badge-id]]])
+      (db/persist!))}
+
+   {:id :api/update-in-progress-badge!
+    :params {:user-id uuid?
+             :badge-id uuid?
+             :add? boolean?}
+    :conditions
+    (fn [{:keys [user-id badge-id]}]
+      [(user-exists?-condition user-id)
+       (entity-exists?-condition :badge/id badge-id)])
+    :effect
+    (fn [{:keys [user-id badge-id add?]}]
+      (db/transact! [[(if add? :db/add :db/retract)
+                      [:user/id user-id]
+                      :user/badge-in-progress
+                      [:badge/id badge-id]]])
+      (db/persist!))}
+
+   ])
 
 (def queries
   [{:id :data
