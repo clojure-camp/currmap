@@ -5,6 +5,45 @@
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.badge-map :as bm]))
 
+(defn badge-view
+  [badge-id]
+  (let [badge @(state/pull-ident
+                '[:badge/id
+                  :badge/name]
+                [:badge/id badge-id])]
+    [:a {:href (pages/path-for [:badge {:badge-id badge-id}])}
+     (:badge/name badge)]))
+
+(defn date-format [inst]
+  (.toLocaleDateString inst
+                       "en-CA"
+                       #js {:year "numeric"
+                            :month "2-digit"
+                            :day "2-digit"}))
+
+(defn assertion-view
+  [assertion-id show-attrs]
+  (let [assertion @(state/pull-ident
+                    '[:assertion/id
+                      {:assertion/badge [:badge/id]}
+                      {:assertion/issued-by [:user/id
+                                             :user/name]}
+                      :assertion/issued-at]
+                    [:assertion/id assertion-id])]
+    [:div
+     (when (contains? show-attrs :badge-name)
+       [badge-view (:badge/id (:assertion/badge assertion))])
+     " "
+     (when (contains? show-attrs :issued-by)
+       (let [granting-user (:assertion/issued-by assertion)]
+         (if (= (:user/id granting-user)
+                (:user/id @state/user))
+           "(Self-Granted)"
+           (str "(Granted by " (:user/name granting-user) ")"))))
+     " "
+     (when (contains? show-attrs :issued-at)
+       (date-format (:assertion/issued-at assertion)))]))
+
 (defn badges-map-view []
   (let [badge-ids @(state/q '[:find [?id ...]
                               :where
@@ -42,28 +81,26 @@
                                                        [?u :user/badge-in-progress ?b]]
                                                      (:user/id @state/user)
                                                      badge-id))
-        current-user-assertion-id-pairs @(state/q '[:find ?a-id ?issuer-id
-                                                    :in $ ?user-id ?badge-id
-                                                    :where
-                                                    [?u :user/id ?user-id]
-                                                    [?b :badge/id ?badge-id]
-                                                    [?a :assertion/user ?u]
-                                                    [?a :assertion/badge ?b]
-                                                    [?a :assertion/id ?a-id]
-                                                    [?a :assertion/issued-by ?issuer]
-                                                    [?issuer :user/id ?issuer-id]]
-                                                  (:user/id @state/user)
-                                                  badge-id)]
+        current-user-assertion-ids @(state/q '[:find [?a-id ...]
+                                               :in $ ?user-id ?badge-id
+                                               :where
+                                               [?u :user/id ?user-id]
+                                               [?b :badge/id ?badge-id]
+                                               [?a :assertion/user ?u]
+                                               [?a :assertion/badge ?b]
+                                               [?a :assertion/id ?a-id]
+                                               [?a :assertion/issued-by ?issuer]]
+                                             (:user/id @state/user)
+                                             badge-id)]
     [:div
      [:div (:badge/name badge)]
      (when @state/user
        [:div.user-badges
-        (if-let [_self-granted? (->> current-user-assertion-id-pairs
-                                     (some (fn [[_ issuer-id]]
-                                             (= issuer-id
-                                                (:user/id @state/user)))))]
+        (if (seq current-user-assertion-ids)
           [:div
-           "(Self-Granted)"]
+           (for [assertion-id current-user-assertion-ids]
+             ^{:key assertion-id}
+             [assertion-view assertion-id #{:issued-by :issued-at}])]
           [:button {:on-click (fn []
                                 (state/save-entity!
                                  {:assertion/id (random-uuid)
@@ -72,7 +109,8 @@
                                   :assertion/issued-by
                                   {:user/id (:user/id @state/user)}
                                   :assertion/issued-at (js/Date.)}))}
-           "GRANT TO SELF!"])
+           "[GRANT TO SELF!]"])
+
 
         [:button {:on-click (fn []
                               (state/transact!
@@ -97,41 +135,7 @@
            "Remove from in-progress"
            "Add to in-progress")]])]))
 
-(defn badge-view
-  [badge-id]
-  (let [badge @(state/pull-ident
-                '[:badge/id
-                  :badge/name]
-                [:badge/id badge-id])]
-    [:span
-     (:badge/name badge)]))
 
-(defn date-format [inst]
-  (.toLocaleDateString inst
-                       "en-CA"
-                       #js {:year "numeric"
-                            :month "2-digit"
-                            :day "2-digit"}))
-
-(defn assertion-view
-  [assertion-id]
-  (let [assertion @(state/pull-ident
-                    '[:assertion/id
-                      {:assertion/badge [:badge/id]}
-                      {:assertion/issued-by [:user/id
-                                             :user/name]}
-                      :assertion/issued-at]
-                    [:assertion/id assertion-id])]
-    [:div
-     [badge-view (:badge/id (:assertion/badge assertion))]
-     " "
-     (let [granting-user (:assertion/issued-by assertion)]
-       (if (= (:user/id granting-user)
-              (:user/id @state/user))
-         "(Self-Granted)"
-         (str "(Granted by " (:user/name granting-user) ")")))
-     " "
-     (date-format (:assertion/issued-at assertion))]))
 
 (defn user-profile-badges-view
   []
@@ -162,7 +166,7 @@
        [:h3 {:tw "font-bold"} "Badges"]
        (for [assertion-id assertions]
          ^{:key assertion-id}
-         [assertion-view assertion-id])]
+         [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]
 
      [:div
       [:h3 {:tw "font-bold"} "Working Towards"]
