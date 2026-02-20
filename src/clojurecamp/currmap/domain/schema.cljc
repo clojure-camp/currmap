@@ -112,6 +112,8 @@
 
    :user
    {:user/id id
+    :user/name {:db/spec NonBlankString
+                :db/input :input/text}
     :user/email {:db/spec Email}
     :user/badge-working-towards (rel :many :badge :optional)
     :user/badge-in-progress (rel :many :badge :optional)}

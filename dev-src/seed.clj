@@ -5,9 +5,8 @@
    [clojurecamp.currmap.db :as db]
    [datascript.core :as d]))
 
-(defonce id
-  (memoize (fn [_seed]
-             (uuid/random))))
+(defn id [s]
+  (uuid/from-email s))
 
 (def seed-data
   [{:topic/id (id "topic-clojure")
@@ -79,10 +78,12 @@
                        [:outcome/id (id "outcome-macro")]]}
 
    {:user/id (id "user-alice")
-    :user/email "alice@example.com"}
+    :user/email "alice@example.com"
+    :user/name "Alice"}
 
    {:user/id (id "user-bob")
-    :user/email "bob@example.com"}
+    :user/email "bob@example.com"
+    :user/name "Bob"}
 
    {:rating/id (id "rating-1")
     :rating/user [:user/id (id "user-alice")]

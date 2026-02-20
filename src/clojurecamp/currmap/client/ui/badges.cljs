@@ -56,45 +56,46 @@
                                                   badge-id)]
     [:div
      [:div (:badge/name badge)]
-     [:div
-      (if-let [_self-granted? (->> current-user-assertion-id-pairs
-                                   (some (fn [[_ issuer-id]]
-                                           (= issuer-id
-                                              (:user/id @state/user)))))]
-        [:div
-         "(Self-Granted)"]
-        [:button {:on-click (fn []
-                              (state/save-entity!
-                               {:assertion/id (random-uuid)
-                                :assertion/badge {:badge/id badge-id}
-                                :assertion/user {:user/id (:user/id @state/user)}
-                                :assertion/issued-by
-                                {:user/id (:user/id @state/user)}
-                                :assertion/issued-at (js/Date.)}))}
-         "GRANT TO SELF!"])
+     (when @state/user
+       [:div.user-badges
+        (if-let [_self-granted? (->> current-user-assertion-id-pairs
+                                     (some (fn [[_ issuer-id]]
+                                             (= issuer-id
+                                                (:user/id @state/user)))))]
+          [:div
+           "(Self-Granted)"]
+          [:button {:on-click (fn []
+                                (state/save-entity!
+                                 {:assertion/id (random-uuid)
+                                  :assertion/badge {:badge/id badge-id}
+                                  :assertion/user {:user/id (:user/id @state/user)}
+                                  :assertion/issued-by
+                                  {:user/id (:user/id @state/user)}
+                                  :assertion/issued-at (js/Date.)}))}
+           "GRANT TO SELF!"])
 
-      [:button {:on-click (fn []
-                            (state/transact!
-                             [[(if current-user-working-towards?
-                                 :db/retract
-                                 :db/add)
-                               [:user/id (:user/id @state/user)]
-                               :user/badge-working-towards
-                               [:badge/id badge-id]]]))}
-       (if current-user-working-towards?
-         "Remove from working towards"
-         "Add to working towards")]
-      [:button {:on-click (fn []
-                            (state/transact!
-                             [[(if current-user-in-progress?
-                                 :db/retract
-                                 :db/add)
-                               [:user/id (:user/id @state/user)]
-                               :user/badge-in-progress
-                               [:badge/id badge-id]]]))}
-       (if current-user-in-progress?
-         "Remove from in-progress"
-         "Add to in-progress")]]]))
+        [:button {:on-click (fn []
+                              (state/transact!
+                               [[(if current-user-working-towards?
+                                   :db/retract
+                                   :db/add)
+                                 [:user/id (:user/id @state/user)]
+                                 :user/badge-working-towards
+                                 [:badge/id badge-id]]]))}
+         (if current-user-working-towards?
+           "Remove from working towards"
+           "Add to working towards")]
+        [:button {:on-click (fn []
+                              (state/transact!
+                               [[(if current-user-in-progress?
+                                   :db/retract
+                                   :db/add)
+                                 [:user/id (:user/id @state/user)]
+                                 :user/badge-in-progress
+                                 [:badge/id badge-id]]]))}
+         (if current-user-in-progress?
+           "Remove from in-progress"
+           "Add to in-progress")]])]))
 
 (defn badge-view
   [badge-id]
@@ -117,17 +118,19 @@
   (let [assertion @(state/pull-ident
                     '[:assertion/id
                       {:assertion/badge [:badge/id]}
-                      {:assertion/issued-by [:user/id]}
+                      {:assertion/issued-by [:user/id
+                                             :user/name]}
                       :assertion/issued-at]
                     [:assertion/id assertion-id])]
     [:div
      [badge-view (:badge/id (:assertion/badge assertion))]
      " "
-     (let [granting-user-id (:user/id (:assertion/issued-by assertion))]
-       (if (= granting-user-id
+     (let [granting-user (:assertion/issued-by assertion)]
+       (if (= (:user/id granting-user)
               (:user/id @state/user))
          "(Self-Granted)"
-         (str "(Granted by " granting-user-id ")")))
+         (str "(Granted by " (:user/name granting-user) ")")))
+     " "
      (date-format (:assertion/issued-at assertion))]))
 
 (defn user-profile-badges-view
