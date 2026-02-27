@@ -152,13 +152,10 @@
              ^{:key assertion-id}
              [assertion-view assertion-id #{:issued-by :issued-at}])]
           [:button {:on-click (fn []
-                                (state/save-entity!
-                                 {:assertion/id (random-uuid)
-                                  :assertion/badge {:badge/id badge-id}
-                                  :assertion/user {:user/id (:user/id @state/user)}
-                                  :assertion/issued-by
-                                  {:user/id (:user/id @state/user)}
-                                  :assertion/issued-at (js/Date.)}))}
+                                (state/remote-do!
+                                 [:api/grant-badge!
+                                  {:target-user-id (:user/id @state/user)
+                                   :badge-id badge-id}]))}
            "[GRANT TO SELF!]"])
 
         [grant-to-other-user-view badge-id]
