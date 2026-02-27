@@ -1,8 +1,8 @@
 (ns clojurecamp.currmap.domain.schema
   (:require
-    [malli.core :as m]
-    [malli.transform :as mt]
-    [bloom.commons.uuid :as uuid])
+   [malli.core :as m]
+   [malli.transform :as mt]
+   [bloom.commons.uuid :as uuid])
   #?(:clj
      (:import
       [org.apache.commons.validator.routines UrlValidator])))
@@ -157,12 +157,11 @@
   (->> (dissoc entity :db/id)
        keys
        (some (fn [k]
-                 (when (= "id" (name k))
-                   (keyword (namespace k))))))
+               (when (= "id" (name k))
+                 (keyword (namespace k))))))
   #_(attr->entity-type (key (first entity))))
 
 #_(entity->entity-type {:topic/id "123"})
-
 
 (defn attr->schema
   [attr]
@@ -207,8 +206,8 @@
   (partial (m/validator Entity)))
 
 #_(valid?
-    {:user/id #uuid "577d2583-b74b-4bc8-9af2-0671964c83b4"
-     :user/email "alice@example.com"})
+   {:user/id #uuid "577d2583-b74b-4bc8-9af2-0671964c83b4"
+    :user/email "alice@example.com"})
 
 (def strip-extra-keys
   (partial
@@ -243,20 +242,3 @@
 
 #_(blank :topic)
 
-(defn can-edit?
-  [entity user-id role]
-  (cond
-    ;; all editable by admin
-    (= :role/admin role)
-    true
-    ;; resource - editable by all
-    (= (entity->entity-type entity) :resource)
-    true
-    ;; ratings - editable by user that created
-    (= (entity->entity-type entity) :rating)
-    (= user-id (:user/id (:rating/user entity)))
-    ;; assertions - can self grant
-    (= (entity->entity-type entity) :assertion)
-    (= user-id
-       (:user/id (:assertion/user entity))
-       (:user/id (:assertion/issued-by entity)))))

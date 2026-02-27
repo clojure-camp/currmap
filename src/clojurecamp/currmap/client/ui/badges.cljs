@@ -1,7 +1,9 @@
 (ns clojurecamp.currmap.client.ui.badges
   (:require
+   [clojure.string :as string]
    [bloom.commons.pages :as pages]
    [reagent.core :as r]
+   [clojurecamp.currmap.client.tada :as tada]
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.badge-map :as bm]))
 
@@ -58,6 +60,54 @@
                     doall)]
     [bm/layout-view badges]))
 
+(defn grant-to-other-user-view
+  [badge-id]
+  (r/with-let
+    [show-user-search? (r/atom false)
+     results (r/atom nil)]
+    (if @show-user-search?
+      [:div
+       [:input {:type "search"
+                :autofocus true
+                :placeholder "Search for user by name"
+                :on-change (fn [e]
+                             (reset! results (->> @(state/q '[:find ?user-id ?name
+                                                              :where
+                                                              [?u :user/id ?user-id]
+                                                              [?u :user/name ?name]])
+                                                  (filter (fn [[_ user-name]]
+                                                            (string/includes?
+                                                             (string/lower-case user-name)
+                                                             (string/lower-case (.. e -target -value))))))))}]
+       (when @results
+         [:div
+          (for [[user-id user-name] @results]
+            ^{:key user-id}
+            [:div {:on-click (fn []
+                               (when (js/confirm (str "Are you sure you want to grant this badge to " user-name "?"))
+                                 (-> (tada/tada!
+                                      [:api/grant-badge!
+                                       {:target-user-id user-id
+                                        :badge-id badge-id}])
+                                     (.then
+                                      (fn []
+                                        (js/alert "Badge granted successfully!"))))))}
+             user-name])])]
+      (let [assertion-from-third-party? @(state/q '[:find ?u .
+                                                    :in $ ?user-id ?badge-id
+                                                    :where
+                                                    [?u :user/id ?user-id]
+                                                    [?b :badge/id ?badge-id]
+                                                    [?a :assertion/user ?u]
+                                                    [?a :assertion/badge ?b]
+                                                    [?a :assertion/issued-by ?issuer]
+                                                    [(not= ?issuer ?user-id)]]
+                                                  (:user/id @state/user)
+                                                  badge-id)]
+        (when assertion-from-third-party?
+          [:button {:on-click (fn [] (reset! show-user-search? true))}
+           "[GRANT TO OTHER USER]"])))))
+
 (defn current-badge-view
   [badge-id]
   (let [badge @(state/pull-ident
@@ -111,6 +161,7 @@
                                   :assertion/issued-at (js/Date.)}))}
            "[GRANT TO SELF!]"])
 
+        [grant-to-other-user-view badge-id]
 
         [:button {:on-click (fn []
                               (state/transact!
@@ -135,8 +186,6 @@
            "Remove from in-progress"
            "Add to in-progress")]])]))
 
-
-
 (defn user-profile-badges-view
   []
   (let [user-id (:user/id @state/user)
@@ -160,13 +209,13 @@
                                [?u :user/id ?user-id]
                                [?a :assertion/user ?u]
                                [?a :assertion/id ?assertion-id]]
-                               user-id)]
+                             user-id)]
     [:div
-      [:div
-       [:h3 {:tw "font-bold"} "Badges"]
-       (for [assertion-id assertions]
-         ^{:key assertion-id}
-         [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]
+     [:div
+      [:h3 {:tw "font-bold"} "Badges"]
+      (for [assertion-id assertions]
+        ^{:key assertion-id}
+        [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]
 
      [:div
       [:h3 {:tw "font-bold"} "Working Towards"]

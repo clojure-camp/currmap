@@ -1,17 +1,17 @@
 (ns clojurecamp.currmap.domain.cqrs
   (:require
-    [bloom.commons.uuid :as uuid]
-    [clojure.string :as string]
-    [clojure.set :as set]
-    [clojure.walk :as walk]
-    [malli.core :as m]
-    [tada.events.core :as tada]
-    [clojurecamp.currmap.ai :as ai]
-    [clojurecamp.currmap.config :as config]
-    [clojurecamp.currmap.db :as db]
-    [clojurecamp.currmap.email :as email]
-    [clojurecamp.currmap.emails :as emails]
-    [clojurecamp.currmap.domain.schema :as schema]))
+   [bloom.commons.uuid :as uuid]
+   [clojure.string :as string]
+   [clojure.set :as set]
+   [clojure.walk :as walk]
+   [malli.core :as m]
+   [tada.events.core :as tada]
+   [clojurecamp.currmap.ai :as ai]
+   [clojurecamp.currmap.config :as config]
+   [clojurecamp.currmap.db :as db]
+   [clojurecamp.currmap.email :as email]
+   [clojurecamp.currmap.emails :as emails]
+   [clojurecamp.currmap.domain.schema :as schema]))
 
 (defn normalize
   [email-string]
@@ -22,22 +22,22 @@
 (defn email->user-id
   [email]
   (db/q
-    '[:find ?user-id .
-      :in $ ?email
-      :where
-      [?u :user/email ?email]
-      [?u :user/id ?user-id]]
-    email))
+   '[:find ?user-id .
+     :in $ ?email
+     :where
+     [?u :user/email ?email]
+     [?u :user/id ?user-id]]
+   email))
 
 (defn user-id->email
   [user-id]
   (db/q
-    '[:find ?email .
-      :in $ ?user-id
-      :where
-      [?u :user/id ?user-id]
-      [?u :user/email ?email]]
-    user-id))
+   '[:find ?email .
+     :in $ ?user-id
+     :where
+     [?u :user/id ?user-id]
+     [?u :user/email ?email]]
+   user-id))
 
 (defn user-id->role
   [user-id]
@@ -48,6 +48,38 @@
       (contains? student email) :role/student)))
 
 #_(user-id->role (email->user-id "alice@example.com"))
+
+(defn user-id->badge-ids
+  [user-id]
+  (set (db/q
+        '[:find [?badge-id ...]
+          :in $ ?user-id
+          :where
+          [?u :user/id ?user-id]
+          [?a :assertion/user ?u]
+          [?a :assertion/badge ?b]
+          [?b :badge/id ?badge-id]]
+        user-id)))
+
+(defn can-edit?
+  [entity user-id role]
+  (cond
+    ;; all editable by admin
+    (= :role/admin role)
+    true
+    ;; resource - editable by all
+    (= (schema/entity->entity-type entity) :resource)
+    true
+    ;; ratings - editable by user that created
+    (= (schema/entity->entity-type entity) :rating)
+    (= user-id (:user/id (:rating/user entity)))
+    ;; assertions - can self grant
+    (and (= (schema/entity->entity-type entity) :assertion)
+         (= user-id
+            (:user/id (:assertion/user entity))
+            (:user/id (:assertion/issued-by entity))))
+    true
+    ))
 
 (defn entity-exists?
   [id-key entity-id]
@@ -63,14 +95,14 @@
   "Remove nil values, because datascript does not allow them."
   [m]
   (walk/postwalk
-    (fn [x]
-      (if (map? x)
-        (->> (dissoc x :db/id)
-             (remove (fn [[_k v]]
-                       (nil? v)))
-             (into {}))
-        x))
-    m))
+   (fn [x]
+     (if (map? x)
+       (->> (dissoc x :db/id)
+            (remove (fn [[_k v]]
+                      (nil? v)))
+            (into {}))
+       x))
+   m))
 
 (defn force-rels-transactions
   "Creates a transaction that will force the relationships of the given entity to match exactly
@@ -101,7 +133,7 @@
                          (->> (schema/schema entity-type)
                               (keep (fn [[attr opts]]
                                       (when
-                                        (contains? relevant-rel-attrs attr)
+                                       (contains? relevant-rel-attrs attr)
                                         {attr [(schema/id-key-for (:db/rel-entity-type opts))]}))))
                          original-entity-ref)
         retractions (->> original-entity
@@ -123,7 +155,6 @@
                                                   (first v)])))))))]
     (concat retractions
             [modified-entity])))
-
 
 #_(force-rels-transactions
    {:resource/id #uuid "0199c4c5-3260-770b-929f-9bf3dc298207"
@@ -156,12 +187,12 @@
             user-id (or (email->user-id email)
                         (do
                           (db/transact!
-                            [(merge (schema/blank :user)
-                                    {:user/email email})])
+                           [(merge (schema/blank :user)
+                                   {:user/email email})])
                           (email->user-id email)))]
         (email/send!
-          (emails/login-link {:user-id user-id
-                              :email email}))
+         (emails/login-link {:user-id user-id
+                             :email email}))
         {:status 200}))}
 
    {:id :transact!
@@ -181,8 +212,8 @@
     :conditions
     (fn [{:keys [user-id entity]}]
       [(user-exists?-condition user-id)
-       [#(schema/can-edit? entity user-id
-                           (user-id->role user-id))
+       [#(can-edit? entity user-id
+                    (user-id->role user-id))
         :unauthorized "User not authorized to upsert this entity"]])
     :effect
     (fn [{:keys [entity]}]
@@ -218,25 +249,6 @@
         {:resource-id resource-id}))
     :return :tada/effect-return}
 
-   {:id :api/self-grant-badge!
-    :params {:user-id uuid?
-             :badge-id uuid?}
-    :conditions
-    (fn [{:keys [user-id badge-id]}]
-      [(user-exists?-condition user-id)
-       (entity-exists?-condition :badge/id badge-id)
-       ;; TODO doesn't already have this badge
-       ])
-    :effect
-    (fn [{:keys [user-id badge-id]}]
-      (db/transact!
-        [(merge (schema/blank :assertion)
-                {:assertion/badge [:badge/id badge-id]
-                 :assertion/user [:user/id user-id]
-                 :assertion/issued-by [:user/id user-id]
-                 :assertion/issued-at (java.util.Date.)})])
-      (db/persist!))}
-
    {:id :api/grant-badge!
     :params {:user-id uuid?
              :target-user-id uuid?
@@ -246,16 +258,18 @@
       [(user-exists?-condition user-id)
        (entity-exists?-condition :user/id target-user-id)
        (entity-exists?-condition :badge/id badge-id)
-       ;; TODO the granting user has this badge
-       ])
+       [#(or
+          (= user-id target-user-id)
+          (contains? (user-id->badge-ids user-id) badge-id))
+        :unauthorized "User does not have this badge"]])
     :effect
     (fn [{:keys [user-id target-user-id badge-id]}]
       (db/transact!
-        [(merge (schema/blank :assertion)
-                {:assertion/badge [:badge/id badge-id]
-                 :assertion/user [:user/id target-user-id]
-                 :assertion/issued-by [:user/id user-id]
-                 :assertion/issued-at (java.util.Date.)})])
+       [(merge (schema/blank :assertion)
+               {:assertion/badge [:badge/id badge-id]
+                :assertion/user [:user/id target-user-id]
+                :assertion/issued-by [:user/id user-id]
+                :assertion/issued-at (java.util.Date.)})])
       (db/persist!))}
 
    {:id :api/update-working-towards-badge!
@@ -288,9 +302,7 @@
                       [:user/id user-id]
                       :user/badge-in-progress
                       [:badge/id badge-id]]])
-      (db/persist!))}
-
-   ])
+      (db/persist!))}])
 
 (def queries
   [{:id :data
@@ -302,11 +314,11 @@
       {:db (db/->edn (db/filter-users @@db/data))
        :user (when user-id
                (assoc (db/pull-ident
-                        [:user/id
-                         :user/name
-                         :user/email]
-                        [:user/id user-id])
-                 :user/role (user-id->role user-id)))})}
+                       [:user/id
+                        :user/name
+                        :user/email]
+                       [:user/id user-id])
+                      :user/role (user-id->role user-id)))})}
 
    {:id :entity
     :params {:user-id (fn [e]
