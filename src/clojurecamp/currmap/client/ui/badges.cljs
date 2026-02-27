@@ -72,9 +72,12 @@
                 :placeholder "Search for user by name"
                 :on-change (fn [e]
                              (reset! results (->> @(state/q '[:find ?user-id ?name
+                                                              :in $ ?current-user-id
                                                               :where
                                                               [?u :user/id ?user-id]
-                                                              [?u :user/name ?name]])
+                                                              [?u :user/name ?name]
+                                                              [(not= ?user-id ?current-user-id)]]
+                                                            (:user/id @state/user))
                                                   (filter (fn [[_ user-name]]
                                                             (string/includes?
                                                              (string/lower-case user-name)
