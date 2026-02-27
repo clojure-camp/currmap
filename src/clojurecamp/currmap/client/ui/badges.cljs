@@ -244,6 +244,7 @@
      [badges-map-view]]
     (when badge-id
       [:div {:tw "w-25% bg-gray-100 p-2"}
+       ^{:key badge-id}
        [current-badge-view badge-id]])]])
 
 (def pages
