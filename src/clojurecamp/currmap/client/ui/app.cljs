@@ -10,10 +10,13 @@
 (defn auth-view
   []
   (if @state/user
-    [ui/text-button
-     {:label "Log Out"
-      :on-click (fn []
-                  (state/log-out!))}]
+    [:div {:tw "flex items-center gap-2"}
+     [:span {:tw "text-blue-400 text-sm"}
+      (:user/name @state/user)]
+     [ui/text-button
+      {:label "Log Out"
+       :on-click (fn []
+                   (state/log-out!))}]]
     [ui/text-button
      {:label "Log In"
       :on-click (fn []

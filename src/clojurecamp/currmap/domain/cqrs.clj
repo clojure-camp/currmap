@@ -303,6 +303,7 @@
        :user (when user-id
                (assoc (db/pull-ident
                         [:user/id
+                         :user/name
                          :user/email]
                         [:user/id user-id])
                  :user/role (user-id->role user-id)))})}
