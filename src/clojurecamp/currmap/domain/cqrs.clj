@@ -264,13 +264,15 @@
         :unauthorized "User does not have this badge"]])
     :effect
     (fn [{:keys [user-id target-user-id badge-id]}]
-      (db/transact!
-       [(merge (schema/blank :assertion)
-               {:assertion/badge [:badge/id badge-id]
-                :assertion/user [:user/id target-user-id]
-                :assertion/issued-by [:user/id user-id]
-                :assertion/issued-at (java.util.Date.)})])
-      (db/persist!))}
+      (let [tx [(merge (schema/blank :assertion)
+                       {:assertion/badge [:badge/id badge-id]
+                        :assertion/user [:user/id target-user-id]
+                        :assertion/issued-by [:user/id user-id]
+                        :assertion/issued-at (java.util.Date.)})]]
+        (db/transact! tx)
+        (db/persist!)
+        {:tx tx}))
+    :return :tada/effect-return}
 
    {:id :api/update-working-towards-badge!
     :params {:user-id uuid?
