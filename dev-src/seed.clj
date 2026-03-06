@@ -85,6 +85,10 @@
     :user/email "bob@example.com"
     :user/name "Bob"}
 
+   {:user/id (id "user-cathy")
+    :user/email "cathy@example.com"
+    :user/name "Cathy"}
+
    {:rating/id (id "rating-1")
     :rating/user [:user/id (id "user-alice")]
     :rating/resource [:resource/id (id "resource-exercises")]
