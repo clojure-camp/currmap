@@ -151,18 +151,18 @@
      [:div {:tw "flex"}
       [:div.column
        [:div {:tw "flex justify-between p-1 bg-gray-300"}
-        [:h1 {:tw "font-bold"} "Editing " (:resource/id (:editor-state/resource-draft @editor-state))]
-        [ui/text-button {:label "Save"
-                         :on-click (fn []
-                                     (state/remote-do!
-                                      [:upsert-entity!
-                                       {:entity
-                                        (->> @editor-state
-                                             :editor-state/resource-draft
-                                             schema/strip-extra-keys)}]))}]]
+         [:h1 {:tw "font-bold"} "Editing " (:resource/id (:editor-state/resource-draft @editor-state))]
+         [ui/text-button {:label "Save"
+                          :on-click (fn []
+                                      (-> (state/remote-do!
+                                           [:upsert-entity!
+                                            {:entity
+                                             (->> @editor-state
+                                                  :editor-state/resource-draft
+                                                  schema/strip-extra-keys)}])))}]]
 
-       [:div {:tw "p-2"}
-        #_[:pre {:tw "text-xs whitespace-pre-wrap"}
+        [:div {:tw "p-2"}
+         #_[:pre {:tw "text-xs whitespace-pre-wrap"}
          (with-out-str (cljs.pprint/pprint (:editor-state/resource-draft @editor-state)))]
         (when @resource-draft
           [editor/embeddable-editor-view {:entity resource-draft}])]]
@@ -191,20 +191,19 @@
   (r/with-let
    [scraping? (r/atom false)]
    (if (not @scraping?)
-     [:form {:on-submit (fn [e]
-                          (.preventDefault e)
-                          (reset! scraping? true)
-                          (state/remote-do!
-                           [:scrape!
-                            {:url (.-value (aget (.-elements (.-target e)) "url"))}
-                            {:on-success
-                             (fn [{:keys [resource-id]}]
-                               (pages/navigate-to! [:resource-editor-resource {:resource-id resource-id}]))
-                             :on-error (fn []
-                                         (js/alert "Error creating resource."))}]))}
-      [:label
-       [:div "URL"]
-       [:input {:placeholder "https://example.com"
+      [:form {:on-submit (fn [e]
+                           (.preventDefault e)
+                           (reset! scraping? true)
+                           (-> (state/remote-do!
+                                [:scrape!
+                                 {:url (.-value (aget (.-elements (.-target e)) "url"))}])
+                               (.then (fn [{:keys [resource-id]}]
+                                        (pages/navigate-to! [:resource-editor-resource {:resource-id resource-id}])))
+                               (.catch (fn []
+                                         (js/alert "Error creating resource.")))))}
+       [:label
+        [:div "URL"]
+        [:input {:placeholder "https://example.com"
                 :name "url"}]]
       [:button "Scrape"]]
      ;; scraping
