@@ -118,8 +118,16 @@
     :user/badge-working-towards (rel :many :badge :optional)
     :user/badge-in-progress (rel :many :badge :optional)}
 
+   :badge-group
+   {:badge-group/id id
+    :badge-group/name {:db/spec NonBlankString
+                       :db/input :input/text}}
+
    :badge
    {:badge/id id
+    :badge/group (rel :one :badge-group :required)
+    :badge/level {:db/spec pos-int?
+                  :db/input :input/text}
     :badge/prerequisite (rel :many :badge :optional)
     :badge/topic (rel :one :topic :required)
     :badge/outcome (rel :many :outcome :optional)

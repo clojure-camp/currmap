@@ -55,6 +55,9 @@
                            @(state/pull-ident
                              '[:badge/id
                                :badge/name
+                               :badge/level
+                               {:badge/group [:badge-group/id
+                                              :badge-group/name]}
                                {:badge/prerequisite [:badge/id]}]
                              [:badge/id badge-id])))
                     doall)]

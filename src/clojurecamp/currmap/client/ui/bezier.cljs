@@ -9,6 +9,15 @@
   {:x (/ (+ (:x pt2) (:x pt1)) 2)
    :y (/ (+ (:y pt2) (:y pt1)) 2)})
 
+;; ELK orthogonal routing produces bend points that are corner waypoints, not bezier
+;; control points — connect them with straight line segments.
+(defn get-orthogonal-path-from-points
+  [{:strs [startPoint bendPoints endPoint]}]
+  (->> (concat [startPoint] bendPoints [endPoint])
+       (map (fn [{:strs [x y]}] {:x x :y y}))
+       (map-indexed (fn [i p] (str (if (zero? i) "M" "L") " " (pt->str p))))
+       (string/join " ")))
+
 ;; https://github.com/eclipse-elk/elk/issues/848
 (defn get-bezier-path-from-points
   [{:strs [startPoint bendPoints endPoint]}]
@@ -46,6 +55,9 @@
                                           updated (into (subvec points 0 i)
                                                         (cons missing (subvec points i)))]
                                       (recur updated (- i 2)))))]
-                 (get-bezier-path-from-points (cons start new-points))))]
+                 (get-bezier-path-from-points
+                  {"startPoint" {"x" (:x start) "y" (:y start)}
+                   "bendPoints" (mapv (fn [p] {"x" (:x p) "y" (:y p)}) (butlast new-points))
+                   "endPoint" (let [p (last new-points)] {"x" (:x p) "y" (:y p)})})))]
 
     (string/join " " path)))

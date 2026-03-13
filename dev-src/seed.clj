@@ -113,19 +113,28 @@
     :rating/outcome [:outcome/id (id "outcome-macro")]
     :rating/value :rating.value/strong-yes}
 
-   ;; badges and stuff
+   ;; badge groups and badges
+
+   {:badge-group/id (id "group-clojure")
+    :badge-group/name "Clojure"}
 
    {:badge/id (id "clojure-i-badge")
+    :badge/group [:badge-group/id (id "group-clojure")]
+    :badge/level 1
     :badge/topic [:topic/id (id "topic-clojure")]
     :badge/outcome [[:outcome/id (id "outcome-loop")]
                     [:outcome/id (id "outcome-atoms")]]
     :badge/name "Clojure I"}
    {:badge/id (id "clojure-ii-badge")
+    :badge/group [:badge-group/id (id "group-clojure")]
+    :badge/level 2
     :badge/prerequisite [[:badge/id (id "clojure-i-badge")]]
     :badge/topic [:topic/id (id "topic-clojure")]
     :badge/outcome [[:outcome/id (id "outcome-macro")]]
     :badge/name "Clojure II"}
    {:badge/id (id "clojure-iii-badge")
+    :badge/group [:badge-group/id (id "group-clojure")]
+    :badge/level 3
     :badge/prerequisite [[:badge/id (id "clojure-ii-badge")]]
     :badge/topic [:topic/id (id "topic-clojure")]
     :badge/outcome [[:outcome/id (id "outcome-refs")]]
@@ -145,10 +154,7 @@
     :assertion/badge [:badge/id (id "clojure-ii-badge")]
     :assertion/user [:user/id (id "user-alice")]
     :assertion/issued-by [:user/id (id "user-alice")]
-    :assertion/issued-at #inst "2024-01-15T10:00:00.000-00:00"}
-
-
-   ])
+    :assertion/issued-at #inst "2024-01-15T10:00:00.000-00:00"}])
 
 (defn seed! []
   (d/transact! @db/data seed-data))
@@ -158,20 +164,46 @@
 #_(d/transact @db/data [{:user/id (uuid/random)
                          :user/email "rafal.dittwald@gmail.com"}])
 
+(defn parse-badge-id
+  "Splits a badge-id string like \"atoms-2\" into [\"atoms\" 2].
+   Returns [badge-id nil] if no numeric suffix."
+  [badge-id]
+  (if-let [[_ prefix level] (re-matches #"(.+)-(\d+)$" badge-id)]
+    [prefix (parse-long level)]
+    [badge-id nil]))
+
 (defn badge-graph-entities []
-  (->> (slurp "dev-resources/graph.edn")
-       edn/read-string
-       (mapcat (fn [[category chains]]
-              (->> chains
-                   (mapcat (fn [chain]
-                          (->> chain
-                               (cons nil)
-                               (partition 2 1)
-                               (map (fn [[prereq-id badge-id]]
-                                      (merge
-                                       {:badge/id (id badge-id)
-                                        :badge/name badge-id}
-                                       (when prereq-id
-                                         {:badge/prerequisite [[:badge/id (id prereq-id)]]}))           ))))))))))
+  (let [graph (->> (slurp "dev-resources/graph.edn")
+                   edn/read-string)
+        ;; collect all unique group names
+        all-badge-ids (->> graph
+                           vals
+                           (apply concat)
+                           (apply concat)
+                           distinct)
+        group-names (->> all-badge-ids
+                         (map (fn [bid] (first (parse-badge-id bid))))
+                         distinct)
+        group-entities (->> group-names
+                            (map (fn [gname]
+                                   {:badge-group/id (id (str "group-" gname))
+                                    :badge-group/name gname})))
+        badge-entities (->> graph
+                            (mapcat (fn [[_category chains]]
+                                      (->> chains
+                                           (mapcat (fn [chain]
+                                                     (->> chain
+                                                          (cons nil)
+                                                          (partition 2 1)
+                                                          (map (fn [[prereq-id badge-id]]
+                                                                 (let [[group-name level] (parse-badge-id badge-id)]
+                                                                   (merge
+                                                                    {:badge/id (id badge-id)
+                                                                     :badge/name badge-id
+                                                                     :badge/group [:badge-group/id (id (str "group-" group-name))]
+                                                                     :badge/level (or level 1)}
+                                                                    (when prereq-id
+                                                                      {:badge/prerequisite [[:badge/id (id prereq-id)]]}))))))))))))]
+    (concat group-entities badge-entities)))
 
 #_(d/transact @db/data (badge-graph-entities))
