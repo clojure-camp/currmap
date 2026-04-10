@@ -104,7 +104,7 @@
         (.catch js/console.error))))
 
 (defn pure-layout-view
-  [{:keys [layout badges-by-id earned-badge-ids]}]
+  [{:keys [layout badges-by-id badge-states]}]
   [:svg {:style {:width (.-width layout)
                  :height (.-height layout)}}
    (for [{:strs [id x y width height children _edges]}
@@ -136,19 +136,42 @@
                     :font-size 12}
              group-label]
             (let [badge (badges-by-id badge-id)
-                  earned? (contains? earned-badge-ids badge-id)]
+                  {:keys [granted? self-granted? in-progress? working-towards? viewing?]} badge-states]
               [:g {:tw "cursor-pointer"
                    :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))}
                [:rect {:width width
                        :height height
                        :x x
                        :y y
-                       :fill (if earned? "#2563eb" "lightgray")}]
+                       :fill (cond
+                               (granted? badge-id)
+                               "#2563eb"
+
+                               (self-granted? badge-id)
+                               "#16a34a"
+
+                               (in-progress? badge-id)
+                               "#facc15"
+
+                               (working-towards? badge-id)
+                               "#eab308"
+
+                               (viewing? badge-id)
+                               "#9333ea"
+
+                               :else
+                               "lightgray")}]
                [:text {:x (+ x (/ width 2))
                        :y (+ y 2 (/ height 2))
                        :text-anchor "middle"
                        :alignment-baseline "middle"
-                       :fill (if earned? "white" "black")}
+                       :fill (if (or (granted? badge-id)
+                                     (self-granted? badge-id)
+                                     (in-progress? badge-id)
+                                     (working-towards? badge-id)
+                                     (viewing? badge-id))
+                               "white"
+                               "black")}
                 (level->roman (:badge/level badge))]])))]))
 
    (for [{:strs [id sections]}
@@ -168,7 +191,8 @@
                   :style {:stroke "black"
                           :strokeWidth 2}}])])])
 
-(defn layout-view [badges]
+(defn layout-view
+  [{:keys [badges active-badge-id]}]
   (r/with-let
     [*layout (r/atom nil)
      _ (-> (wait-for (fn []
@@ -181,11 +205,38 @@
         {:layout @*layout
          :badges-by-id (zipmap (map :badge/id badges)
                                badges)
-         :earned-badge-ids (set @(state/q '[:find [?badge-id ...]
-                                            :in $ ?user-id
-                                            :where
-                                            [?u :user/id ?user-id]
-                                            [?a :assertion/user ?u]
-                                            [?a :assertion/badge ?b]
-                                            [?b :badge/id ?badge-id]]
-                                          (:user/id @state/user)))}])]))
+         :badge-states {:granted? (set @(state/q '[:find [?badge-id ...]
+                                                   :in $ ?user-id
+                                                   :where
+                                                   [?u :user/id ?user-id]
+                                                   [?a :assertion/user ?u]
+                                                   [?a :assertion/issued-by ?u2]
+                                                   [(not= ?u ?u2)]
+                                                   [?a :assertion/badge ?b]
+                                                   [?b :badge/id ?badge-id]]
+                                                 (:user/id @state/user)))
+                        :self-granted? (set @(state/q '[:find [?badge-id ...]
+                                                        :in $ ?user-id
+                                                        :where
+                                                        [?u :user/id ?user-id]
+                                                        [?a :assertion/user ?u]
+                                                        [?a :assertion/issued-by ?u]
+                                                        [?a :assertion/badge ?b]
+                                                        [?b :badge/id ?badge-id]]
+                                                      (:user/id @state/user)))
+                        :in-progress? (set @(state/q '[:find [?badge-id ...]
+                                                       :in $ ?user-id
+                                                       :where
+                                                       [?u :user/id ?user-id]
+                                                       [?u :user/badge-in-progress ?b]
+                                                       [?b :badge/id ?badge-id]]
+                                                     (:user/id @state/user)))
+                        :on-path-to-working-towards? #{}
+                        :working-towards? (set @(state/q '[:find [?badge-id ...]
+                                                           :in $ ?user-id
+                                                           :where
+                                                           [?u :user/id ?user-id]
+                                                           [?u :user/badge-working-towards ?b]
+                                                           [?b :badge/id ?badge-id]]
+                                                         (:user/id @state/user)))
+                        :viewing? #{active-badge-id}}}])]))

@@ -46,7 +46,8 @@
      (when (contains? show-attrs :issued-at)
        (date-format (:assertion/issued-at assertion)))]))
 
-(defn badges-map-view []
+(defn badges-map-view
+  [{:keys [active-badge-id]}]
   (let [badge-ids @(state/q '[:find [?id ...]
                               :where
                               [?t :badge/id ?id]])
@@ -61,7 +62,8 @@
                                {:badge/prerequisite [:badge/id]}]
                              [:badge/id badge-id])))
                     doall)]
-    [bm/layout-view badges]))
+    [bm/layout-view {:badges badges
+                     :active-badge-id active-badge-id}]))
 
 (defn grant-to-other-user-view
   [badge-id]
@@ -244,7 +246,7 @@
    [:br]
    [:div {:tw "flex grow"}
     [:div {:tw "w-75% overflow-x-auto"}
-     [badges-map-view]]
+     [badges-map-view {:active-badge-id badge-id}]]
     (when badge-id
       [:div {:tw "w-25% bg-gray-100 p-2"}
        ^{:key badge-id}
