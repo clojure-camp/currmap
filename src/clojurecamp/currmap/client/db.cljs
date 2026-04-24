@@ -27,6 +27,11 @@
   [query & args]
   (apply posh/q query @data args))
 
+(defn direct-q
+  "Direct q"
+  [query & args]
+  (apply d/q query @@data args))
+
 (defn rx-pull-ident
   "Reactive pull-ident"
   [pattern [k v]]

@@ -44,6 +44,7 @@
 
 (def pull-ident db/rx-pull-ident)
 (def q db/rx-q)
+(def direct-q db/direct-q)
 
 ;; misc ui stuff, regular reagent atoms
 

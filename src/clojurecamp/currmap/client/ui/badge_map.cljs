@@ -136,7 +136,8 @@
                     :font-size 12}
              group-label]
             (let [badge (badges-by-id badge-id)
-                  {:keys [granted? self-granted? in-progress? working-towards? viewing?]} badge-states]
+                  {:keys [granted? self-granted? in-progress?
+                          on-path-to-working-towards? working-towards? viewing?]} badge-states]
               [:g {:tw "cursor-pointer"
                    :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))}
                [:rect {:width width
@@ -153,6 +154,9 @@
                                (in-progress? badge-id)
                                "#facc15"
 
+                               (on-path-to-working-towards? badge-id)
+                               "#db2777"
+
                                (working-towards? badge-id)
                                "#eab308"
 
@@ -168,6 +172,7 @@
                        :fill (if (or (granted? badge-id)
                                      (self-granted? badge-id)
                                      (in-progress? badge-id)
+                                     (on-path-to-working-towards? badge-id)
                                      (working-towards? badge-id)
                                      (viewing? badge-id))
                                "white"
@@ -231,7 +236,24 @@
                                                        [?u :user/badge-in-progress ?b]
                                                        [?b :badge/id ?badge-id]]
                                                      (:user/id @state/user)))
-                        :on-path-to-working-towards? #{}
+                        :on-path-to-working-towards? (set
+                                                      ;; avoiding posh because it doesn't work well with rules
+                                                      ;; therefore this query is not reactive
+                                                      ;; but this component rerenders when working-towards? changes
+                                                      ;; anyway, so it should be fine
+                                                      (state/direct-q '[:find [?badge-id ...]
+                                                                        :in $ ?user-id %
+                                                                        :where
+                                                                        [?u :user/id ?user-id]
+                                                                        [?u :user/badge-working-towards ?b]
+                                                                        (prerequisite ?b ?pb)
+                                                                        [?pb :badge/id ?badge-id]]
+                                                                      (:user/id @state/user)
+                                                                      '[[(prerequisite ?badge ?p-badge)
+                                                                         [?badge :badge/prerequisite ?p-badge]]
+                                                                        [(prerequisite ?badge ?p-badge)
+                                                                         [?badge :badge/prerequisite ?mid-badge]
+                                                                         (prerequisite ?mid-badge ?p-badge)]]))
                         :working-towards? (set @(state/q '[:find [?badge-id ...]
                                                            :in $ ?user-id
                                                            :where
