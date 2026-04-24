@@ -3,7 +3,7 @@
   :dependencies [[io.bloomventures/omni "0.34.1"]
                  [io.bloomventures/commons "0.15.1"]
                  ;; require sci to fix edamame deps issue
-                 [datascript "1.4.2"]
+                 [datascript "1.7.8"]
                  [tada "0.2.2"]
                  [metosin/malli "0.19.1"]
                  [com.draines/postal "2.0.3"]

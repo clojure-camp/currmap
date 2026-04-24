@@ -7,6 +7,11 @@
 
 ;; this ns shouldn't be accessed from views
 
+;; patch for change in datascript 1.6.0
+(set! posh.plugin-base/get-conn-var (fn [_ conn var]
+                                      ((:posh-dispenser (:listeners @(:atom conn)))
+                                       var)))
+
 (defonce data (atom nil))
 
 (defonce ready? (r/atom false))
