@@ -3,7 +3,6 @@
    [clojure.string :as string]
    [bloom.commons.pages :as pages]
    [reagent.core :as r]
-   [clojurecamp.currmap.client.tada :as tada]
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.badge-map :as bm]))
 
@@ -93,13 +92,11 @@
             ^{:key user-id}
             [:div {:on-click (fn []
                                (when (js/confirm (str "Are you sure you want to grant this badge to " user-name "?"))
-                                 (-> (tada/tada!
+                                 (-> (state/remote-do!
                                       [:api/grant-badge!
                                        {:target-user-id user-id
                                         :badge-id badge-id}])
-                                     (.then
-                                      (fn []
-                                        (js/alert "Badge granted successfully!"))))))}
+                                     (.then (fn [_] (js/alert "Badge granted successfully!"))))))}
              user-name])])]
       (let [assertion-from-third-party? @(state/q '[:find ?u .
                                                     :in $ ?user-id ?badge-id
