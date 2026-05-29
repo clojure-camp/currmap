@@ -169,24 +169,18 @@
         [grant-to-other-user-view badge-id]
 
         [:button {:on-click (fn []
-                              (state/transact!
-                               [[(if current-user-working-towards?
-                                   :db/retract
-                                   :db/add)
-                                 [:user/id (:user/id @state/user)]
-                                 :user/badge-working-towards
-                                 [:badge/id badge-id]]]))}
+                              (state/remote-do!
+                               [:api/update-working-towards-badge!
+                                {:badge-id badge-id
+                                 :add? (not current-user-working-towards?)}]))}
          (if current-user-working-towards?
            "Remove from working towards"
            "Add to working towards")]
         [:button {:on-click (fn []
-                              (state/transact!
-                               [[(if current-user-in-progress?
-                                   :db/retract
-                                   :db/add)
-                                 [:user/id (:user/id @state/user)]
-                                 :user/badge-in-progress
-                                 [:badge/id badge-id]]]))}
+                              (state/remote-do!
+                               [:api/update-in-progress-badge!
+                                {:badge-id badge-id
+                                 :add? (not current-user-in-progress?)}]))}
          (if current-user-in-progress?
            "Remove from in-progress"
            "Add to in-progress")]])]))

@@ -111,14 +111,6 @@
   [entity]
   (db/transact! [(remove-nil-values entity)]))
 
-(defn transact!
-  [tx-data]
-  (-> (remote-do!
-       [:transact!
-        {:txs tx-data}])
-      (.then (fn []
-               (db/transact! tx-data)))))
-
 (defn save-entity!
   [entity]
   (-> (remote-do!

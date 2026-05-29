@@ -195,17 +195,6 @@
                              :email email}))
         {:status 200}))}
 
-   {:id :transact!
-    :params {:user-id uuid?
-             :txs any?}
-    :conditions
-    (fn [{:keys [user-id entity]}]
-      [(user-exists?-condition user-id)])
-    :effect
-    (fn [{:keys [txs]}]
-      (db/transact! txs)
-      (db/persist!))}
-
    {:id :upsert-entity!
     :params {:user-id uuid?
              :entity schema/valid?}
@@ -284,11 +273,14 @@
        (entity-exists?-condition :badge/id badge-id)])
     :effect
     (fn [{:keys [user-id badge-id add?]}]
-      (db/transact! [[(if add? :db/add :db/retract)
-                      [:user/id user-id]
-                      :user/badge-working-towards
-                      [:badge/id badge-id]]])
-      (db/persist!))}
+      (let [tx [[(if add? :db/add :db/retract)
+                 [:user/id user-id]
+                 :user/badge-working-towards
+                 [:badge/id badge-id]]]]
+        (db/transact! tx)
+        (db/persist!)
+        {:tx tx}))
+    :return :tada/effect-return}
 
    {:id :api/update-in-progress-badge!
     :params {:user-id uuid?
@@ -300,11 +292,14 @@
        (entity-exists?-condition :badge/id badge-id)])
     :effect
     (fn [{:keys [user-id badge-id add?]}]
-      (db/transact! [[(if add? :db/add :db/retract)
-                      [:user/id user-id]
-                      :user/badge-in-progress
-                      [:badge/id badge-id]]])
-      (db/persist!))}])
+      (let [tx [[(if add? :db/add :db/retract)
+                 [:user/id user-id]
+                 :user/badge-in-progress
+                 [:badge/id badge-id]]]]
+        (db/transact! tx)
+        (db/persist!)
+        {:tx tx}))
+    :return :tada/effect-return}])
 
 (def queries
   [{:id :data
