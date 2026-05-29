@@ -106,7 +106,7 @@
                                                     [?a :assertion/user ?u]
                                                     [?a :assertion/badge ?b]
                                                     [?a :assertion/issued-by ?issuer]
-                                                    [(not= ?issuer ?user-id)]]
+                                                    [(not= ?issuer ?u)]]
                                                   (:user/id @state/user)
                                                   badge-id)]
         (when assertion-from-third-party?

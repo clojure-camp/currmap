@@ -61,6 +61,35 @@
           [?b :badge/id ?badge-id]]
         user-id)))
 
+(defn user-self-granted-badge?
+  [user-id badge-id]
+  (boolean (db/q
+            '[:find ?a .
+              :in $ ?user-id ?badge-id
+              :where
+              [?u :user/id ?user-id]
+              [?b :badge/id ?badge-id]
+              [?a :assertion/user ?u]
+              [?a :assertion/badge ?b]
+              [?a :assertion/issued-by ?u]]
+            user-id
+            badge-id)))
+
+(defn user-third-party-granted-badge?
+  [user-id badge-id]
+  (boolean (db/q
+            '[:find ?a .
+              :in $ ?user-id ?badge-id
+              :where
+              [?u :user/id ?user-id]
+              [?b :badge/id ?badge-id]
+              [?a :assertion/user ?u]
+              [?a :assertion/badge ?b]
+              [?a :assertion/issued-by ?issuer]
+              [(not= ?issuer ?u)]]
+            user-id
+            badge-id)))
+
 (defn can-edit?
   [entity user-id role]
   (cond
@@ -247,10 +276,12 @@
       [(user-exists?-condition user-id)
        (entity-exists?-condition :user/id target-user-id)
        (entity-exists?-condition :badge/id badge-id)
-       [#(or
-          (= user-id target-user-id)
-          (contains? (user-id->badge-ids user-id) badge-id))
-        :unauthorized "User does not have this badge"]])
+       [#(or (not= user-id target-user-id)
+             (not (user-self-granted-badge? user-id badge-id)))
+        :unauthorized "Badge already self-granted"]
+       [#(or (= user-id target-user-id)
+             (user-third-party-granted-badge? user-id badge-id))
+        :unauthorized "Must have badge granted by someone else in order to grant to someone else"]])
     :effect
     (fn [{:keys [user-id target-user-id badge-id]}]
       (let [tx [(merge (schema/blank :assertion)
