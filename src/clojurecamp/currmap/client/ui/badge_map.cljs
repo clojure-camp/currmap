@@ -58,6 +58,9 @@
        (cb)))))
 
 (def node-height 20)
+
+(defn port-id->badge-id [port-id]
+  (subs port-id 0 (- (count port-id) 2)))
 (def group-label-left-pad 5)
 
 (defn ->elk [badges]
@@ -143,7 +146,7 @@
         (.catch js/console.error))))
 
 (defn badge-view
-  [{:keys [x y width height colors]} badge badge-states]
+  [{:keys [x y width height colors *hovered-badge-id]} badge badge-states]
   (r/with-let
    [*hover? (r/atom false)]
    (let [badge-id (:badge/id badge)
@@ -168,8 +171,12 @@
          (some (fn [[f & row]] (when (f badge-id) row)) conf)]
      [:g {:tw "cursor-pointer"
           :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))
-          :on-mouse-enter (fn [] (reset! *hover? true))
-          :on-mouse-leave (fn [] (reset! *hover? false))}
+          :on-mouse-enter (fn []
+                            (reset! *hover? true)
+                            (reset! *hovered-badge-id (str badge-id)))
+          :on-mouse-leave (fn []
+                            (reset! *hover? false)
+                            (reset! *hovered-badge-id nil))}
       (when ribbon?
         [:polygon {:points (ribbon-points-str cx (+ cy outer-r -3))
                    :fill midtone}])
@@ -190,8 +197,10 @@
 
 (defn pure-layout-view
   [{:keys [layout badges-by-id badge-states]}]
-  [:svg {:style {:width (.-width layout)
-                 :height (.-height layout)}}
+  (r/with-let
+   [*hovered-badge-id (r/atom nil)]
+   [:svg {:style {:width (.-width layout)
+                  :height (.-height layout)}}
    (for [{:strs [id x y width _height children _edges]}
          (js->clj (.-children layout))]
      ^{:key id}
@@ -212,12 +221,8 @@
                       (- (/ group-height
                             2)))
                 :fill base-color
-                ;:stroke "#ccc"
-                ;:stroke-width 1
                 :rx 4}]
-        (for [{:strs [id badge-id group-label width height x y]} children
-              :let [;; force to be inline
-                    #_#_y (get (first children) "y")]]
+        (for [{:strs [id badge-id group-label width height x y]} children]
           ^{:key id}
           (if group-label
             [:text {:x (+ x group-label-left-pad)
@@ -233,26 +238,32 @@
                                   :midtone midtone-color
                                   :highlight highlight-color}
                          :width width
-                         :height height}
+                         :height height
+                         :*hovered-badge-id *hovered-badge-id}
              (badges-by-id badge-id)
              badge-states]))]))
 
-   (for [{:strs [id sections]}
-         (js->clj (.-edges layout))]
+   (for [{:strs [id sections connected?]}
+         (->> (js->clj (.-edges layout))
+              (map (fn [{:strs [sources targets] :as edge}]
+                     (assoc edge "connected?"
+                            (and @*hovered-badge-id
+                                 (or (some #(= (port-id->badge-id %)
+                                               @*hovered-badge-id)
+                                           sources)
+                                     (some #(= (port-id->badge-id %)
+                                               @*hovered-badge-id)
+                                           targets))))))
+              (sort-by (fn [edge]
+                         (get edge "connected?"))))]
      ^{:key id}
      [:g
       (for [{:strs [id] :as section} sections]
         ^{:key id}
         [:path {:d (bezier/get-orthogonal-path-from-points section)
-                :stroke "black"
+                :stroke (if connected? "#000" "#ccc")
                 :stroke-width 1
-                :fill "none"}]
-        #_[:line {:x1 (get startPoint "x")
-                  :y1 (get startPoint "y")
-                  :x2 (get endPoint "x")
-                  :y2 (get endPoint "y")
-                  :style {:stroke "black"
-                          :strokeWidth 2}}])])])
+                :fill "none"}])])]))
 
 (defn layout-view
   [{:keys [badges active-badge-id]}]
