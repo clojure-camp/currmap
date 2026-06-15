@@ -1,13 +1,51 @@
 (ns clojurecamp.currmap.client.ui.badge-map
   (:require
    [bloom.commons.pages :as pages]
+   [clojure.string :as str]
    [reagent.core :as r]
    [clojurecamp.currmap.client.ui.bezier :as bezier]
    [clojurecamp.currmap.client.state :as state]
    [goog.object :as o]))
 
+(defn color [x]
+  (str "oklch(60% 50%" (hash x) ")"))
+
+(defn midtone [x]
+  (str "oklch(80% 50%" (hash x) ")"))
+
 (def level->roman
   {1 "I" 2 "II" 3 "III"})
+
+(defn star-points-str [cx cy outer-r inner-r]
+  (->> (range 24)
+       (map (fn [k]
+              (let [angle (- (* k (/ js/Math.PI 12)) (/ js/Math.PI 2))
+                    r (if (even? k) outer-r inner-r)]
+                (str (+ cx (* r (js/Math.cos angle)))
+                     ","
+                     (+ cy (* r (js/Math.sin angle)))))))
+       (str/join " ")))
+
+(defn hexagon-points-str [cx cy r pointy-top?]
+  (->> (range 6)
+       (map (fn [k]
+              (let [angle (- (* k (/ js/Math.PI 3)) (if pointy-top?
+                                                      (/ js/Math.PI 2)
+                                                      0))]
+                (str (+ cx (* r (js/Math.cos angle)))
+                     ","
+                     (+ cy (* r (js/Math.sin angle)))))))
+       (str/join " ")))
+
+(defn ribbon-points-str [cx top-y]
+  (let [length 15
+        half-width 7]
+    (str/join " "
+              [(str (- cx half-width) "," top-y)
+               (str (+ cx half-width) "," top-y)
+               (str (+ cx half-width) "," (+ top-y length))
+               (str cx "," (+ top-y (- length 3)))
+               (str (- cx half-width) "," (+ top-y length))])))
 
 (defn wait-for [get-value]
   (js/Promise.
@@ -20,6 +58,7 @@
        (cb)))))
 
 (def node-height 20)
+(def group-label-left-pad 5)
 
 (defn ->elk [badges]
   (let [groups (->> badges
@@ -81,7 +120,7 @@
                                               :elk.layered.spacing.nodeNodeBetweenLayers 5}
                               :children (into [{:id label-id
                                                 :group-label group-name
-                                                :width (* 7 (count group-name))
+                                                :width (+ group-label-left-pad (* 7 (count group-name)))
                                                 :height node-height
                                                 :layoutOptions {:elk.portConstraints "FIXED_SIDE"}
                                                 :ports [{:id (str label-id "-E")
@@ -103,14 +142,67 @@
                  (reset! *layout l)))
         (.catch js/console.error))))
 
+(defn badge-view
+  [{:keys [x y width height colors]} badge badge-states]
+  (r/with-let
+   [*hover? (r/atom false)]
+   (let [badge-id (:badge/id badge)
+         {:keys [granted? self-granted? in-progress?
+                 on-path-to-working-towards? working-towards? viewing?]} badge-states
+         hover? (or (viewing? badge-id)
+                    @*hover?)
+         cx (+ x (/ width 2))
+         cy (+ y (/ height 2))
+         outer-r (* (min width height) 0.5)
+         inner-r (* outer-r 0.80)
+         {:keys [highlight base midtone]} colors
+         ;;    f                  shape     fill      stroke    text    h:fill  h:stroke  h:text   ribbon
+         conf [[granted?          ::star    highlight highlight base    base    highlight highlight true]
+               [self-granted?     ::star    highlight highlight base    base    highlight highlight false]
+               [in-progress?      ::star    midtone   midtone   base    midtone highlight highlight false]
+               [on-path-to-working-towards?
+                                  ::hexagon midtone   midtone   base    midtone highlight highlight false]
+               [working-towards?  ::hexagon midtone   midtone   base    midtone highlight highlight false]
+               [(constantly true) ::hexagon base      midtone   midtone base    highlight highlight false]]
+         [shape fill stroke text h-fill h-stroke h-text ribbon?]
+         (some (fn [[f & row]] (when (f badge-id) row)) conf)]
+     [:g {:tw "cursor-pointer"
+          :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))
+          :on-mouse-enter (fn [] (reset! *hover? true))
+          :on-mouse-leave (fn [] (reset! *hover? false))}
+      (when ribbon?
+        [:polygon {:points (ribbon-points-str cx (+ cy outer-r -3))
+                   :fill midtone}])
+      [:polygon {:points (case shape
+                           ::star (star-points-str cx cy outer-r inner-r)
+                           ::hexagon (hexagon-points-str cx cy outer-r false))
+                 :fill (if hover? h-fill fill)
+                 :stroke (if hover? h-stroke stroke)
+                 :stroke-width 1}]
+      [:text {:x cx
+              :y (+ cy 1)
+              :text-anchor "middle"
+              :alignment-baseline "middle"
+              :fill (if hover? h-text text)
+              :font-size 10
+              :pointer-events "none"}
+       (level->roman (:badge/level badge))]])))
+
 (defn pure-layout-view
   [{:keys [layout badges-by-id badge-states]}]
   [:svg {:style {:width (.-width layout)
                  :height (.-height layout)}}
-   (for [{:strs [id x y width height children _edges]}
+   (for [{:strs [id x y width _height children _edges]}
          (js->clj (.-children layout))]
      ^{:key id}
-     (let [group-height 30]
+     (let [group-height 30
+           group-label (->> children
+                            (map (fn [x]
+                                   (get x "group-label")))
+                            first)
+           base-color (color group-label)
+           midtone-color (midtone group-label)
+           highlight-color "#fff"]
        [:g {:transform (str "translate(" x "," y ")")}
         [:rect {:width width
                 :height group-height
@@ -119,65 +211,31 @@
                          2)
                       (- (/ group-height
                             2)))
-                :fill "none"
-                :stroke "#ccc"
-                :stroke-width 1
+                :fill base-color
+                ;:stroke "#ccc"
+                ;:stroke-width 1
                 :rx 4}]
         (for [{:strs [id badge-id group-label width height x y]} children
               :let [;; force to be inline
                     #_#_y (get (first children) "y")]]
           ^{:key id}
           (if group-label
-            [:text {:x x
+            [:text {:x (+ x group-label-left-pad)
                     :y (+ y 2 (/ height 2))
                     :text-anchor "start"
                     :alignment-baseline "middle"
-                    :fill "#666"
+                    :fill "#fff"
                     :font-size 12}
              group-label]
-            (let [badge (badges-by-id badge-id)
-                  {:keys [granted? self-granted? in-progress?
-                          on-path-to-working-towards? working-towards? viewing?]} badge-states]
-              [:g {:tw "cursor-pointer"
-                   :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))}
-               [:rect {:width width
-                       :height height
-                       :x x
-                       :y y
-                       :fill (cond
-                               (granted? badge-id)
-                               "#2563eb"
-
-                               (self-granted? badge-id)
-                               "#16a34a"
-
-                               (in-progress? badge-id)
-                               "#facc15"
-
-                               (on-path-to-working-towards? badge-id)
-                               "#db2777"
-
-                               (working-towards? badge-id)
-                               "#eab308"
-
-                               (viewing? badge-id)
-                               "#9333ea"
-
-                               :else
-                               "lightgray")}]
-               [:text {:x (+ x (/ width 2))
-                       :y (+ y 2 (/ height 2))
-                       :text-anchor "middle"
-                       :alignment-baseline "middle"
-                       :fill (if (or (granted? badge-id)
-                                     (self-granted? badge-id)
-                                     (in-progress? badge-id)
-                                     (on-path-to-working-towards? badge-id)
-                                     (working-towards? badge-id)
-                                     (viewing? badge-id))
-                               "white"
-                               "black")}
-                (level->roman (:badge/level badge))]])))]))
+            [badge-view {:x x
+                         :y y
+                         :colors {:base base-color
+                                  :midtone midtone-color
+                                  :highlight highlight-color}
+                         :width width
+                         :height height}
+             (badges-by-id badge-id)
+             badge-states]))]))
 
    (for [{:strs [id sections]}
          (js->clj (.-edges layout))]
