@@ -5,7 +5,8 @@
                  ;; require sci to fix edamame deps issue
                  [datascript "1.7.8"]
                  [tada "0.2.2"]
-                 [metosin/malli "0.19.1"]
+                 [com.github.rafd/dat "0.0.1-20260615-0"]
+                 [metosin/malli "0.20.1"]
                  [com.draines/postal "2.0.3"]
                  [denistakeda/posh "0.5.9"]
                  [commons-validator/commons-validator "1.10.0"]

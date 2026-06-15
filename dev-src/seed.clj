@@ -2,8 +2,7 @@
   (:require
    [bloom.commons.uuid :as uuid]
    [clojure.edn :as edn]
-   [clojurecamp.currmap.db :as db]
-   [datascript.core :as d]))
+   [clojurecamp.currmap.db :as db]))
 
 (defn id [s]
   (uuid/from-email s))
@@ -157,7 +156,7 @@
     :assertion/issued-at #inst "2024-01-15T10:00:00.000-00:00"}])
 
 (defn seed! []
-  (d/transact! @db/data seed-data))
+  (db/transact! seed-data))
 
 #_(seed!)
 
@@ -206,4 +205,4 @@
                                                                       {:badge/prerequisite [[:badge/id (id prereq-id)]]}))))))))))))]
     (concat group-entities badge-entities)))
 
-#_(d/transact @db/data (badge-graph-entities))
+#_(db/transact @db/db (badge-graph-entities))

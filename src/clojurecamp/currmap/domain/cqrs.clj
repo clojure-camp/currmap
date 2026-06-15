@@ -163,15 +163,15 @@
                               (keep (fn [[attr opts]]
                                       (when
                                        (contains? relevant-rel-attrs attr)
-                                        {attr [(schema/id-key-for (:db/rel-entity-type opts))]}))))
+                                        {attr [(schema/id-key-for (schema/rel-entity-type opts))]}))))
                          original-entity-ref)
         retractions (->> original-entity
                          (mapcat (fn [[rel-attr related]]
-                                   (case (:db/cardinality (schema/attr->schema rel-attr))
-                                     :db.cardinality/one
+                                   (case (schema/rel-cardinality (schema/attr->schema rel-attr))
+                                     :dat.rel/one
                                      ;; don't need to retract
                                      []
-                                     :db.cardinality/many
+                                     :dat.rel/many
                                      (->> related
                                           (map (fn [v]
                                                  [:db/retract
@@ -240,8 +240,7 @@
           ;; this endpoint assumes that if an object contains relation attributes
           ;; it will pass ALL relationships (any existing ones not included will be retracted)
           force-rels-transactions
-          db/transact!)
-      (db/persist!))}
+          db/transact!))}
 
    {:id :scrape!
     :params {:user-id any? ;; TODO
@@ -263,7 +262,6 @@
                         :resource/outcome outcomes
                         :resource/description description
                         :resource/name title}])
-        (db/persist!)
         {:resource-id resource-id}))
     :return :tada/effect-return}
 
@@ -290,7 +288,6 @@
                         :assertion/issued-by [:user/id user-id]
                         :assertion/issued-at (java.util.Date.)})]]
         (db/transact! tx)
-        (db/persist!)
         {:tx tx}))
     :return :tada/effect-return}
 
@@ -309,7 +306,6 @@
                  :user/badge-working-towards
                  [:badge/id badge-id]]]]
         (db/transact! tx)
-        (db/persist!)
         {:tx tx}))
     :return :tada/effect-return}
 
@@ -328,7 +324,6 @@
                  :user/badge-in-progress
                  [:badge/id badge-id]]]]
         (db/transact! tx)
-        (db/persist!)
         {:tx tx}))
     :return :tada/effect-return}])
 
@@ -339,7 +334,7 @@
                             (uuid? e)))}
     :return
     (fn [{:keys [user-id]}]
-      {:db (db/->edn (db/filter-users @@db/data))
+      {:db (pr-str (db/filter-users @db/db))
        :user (when user-id
                (assoc (db/pull-ident
                        [:user/id

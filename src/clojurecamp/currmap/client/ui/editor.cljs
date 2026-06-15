@@ -25,7 +25,7 @@
 (defmethod input-view :input/radio
   [{:keys [schema value on-change]}]
   [:div
-   (for [option (->> (tree-seq vector? identity (:db/spec schema))
+   (for [option (->> (tree-seq vector? identity (:dat/spec schema))
                      (filter (fn [node]
                                (and
                                  (vector? node)
@@ -50,8 +50,8 @@
 (defmethod input-view :input/rel
   [{:keys [schema value on-change]}]
   ;; for a rel, value is expected to be, for example {:topic/id #uuid "..."}
-  (let [id-key (schema/id-key-for (:db/rel-entity-type schema))
-        name-key (schema/name-key-for (:db/rel-entity-type schema))
+  (let [id-key (schema/id-key-for (schema/rel-entity-type schema))
+        name-key (schema/name-key-for (schema/rel-entity-type schema))
         options (->> @(state/q '[:find ?id ?name
                                  :in $ ?id-key ?name-key
                                  :where
@@ -61,10 +61,10 @@
                      (map (fn [[id label]]
                             [{id-key id} (maybe-abbreviate label 40)]))
                      ((fn [x]
-                        (case (:db/cardinality schema)
-                          :db.cardinality/one
+                        (case (schema/rel-cardinality schema)
+                          :dat.rel/one
                           (conj x [nil ""])
-                          :db.cardinality/many
+                          :dat.rel/many
                           (identity x)))))
         ;; going through this hashing hoop to effectively allow for object values
         ;; b/c :value on option gets cast to string
@@ -73,35 +73,35 @@
                             (map first options))]
     [:div
      [:select {:tw ["border border-gray-500 p-1"
-                    (case (:db/cardinality schema)
-                      :db.cardinality/one
+                    (case (schema/rel-cardinality schema)
+                      :dat.rel/one
                       "1em"
-                      :db.cardinality/many
+                      :dat.rel/many
                       "h-20em")]
-               :value (case (:db/cardinality schema)
-                        :db.cardinality/one
+               :value (case (schema/rel-cardinality schema)
+                        :dat.rel/one
                         (str-hash value)
-                        :db.cardinality/many
+                        :dat.rel/many
                         (map str-hash value))
-               :multiple (case (:db/cardinality schema)
-                           :db.cardinality/one
+               :multiple (case (schema/rel-cardinality schema)
+                           :dat.rel/one
                            false
-                           :db.cardinality/many
+                           :dat.rel/many
                            true)
                :on-change (fn [e]
-                            (case (:db/cardinality schema)
-                              :db.cardinality/one
+                            (case (schema/rel-cardinality schema)
+                              :dat.rel/one
                               (on-change (hash->value (.. e -target -value)))
-                              :db.cardinality/many
+                              :dat.rel/many
                               (->> (.. e -target -selectedOptions)
                                    (mapv (fn [o] (hash->value (.-value o))))
                                    (on-change))))}
-      (when (= :db/cardinality.one (:db/cardinality schema))
+      (when (= :dat.rel/one (schema/rel-cardinality schema))
         [:option {:value "nil"} ""])
       (for [[value label] options]
         ^{:key (str-hash value)}
         [:option {:value (str-hash value)} label])]
-     (when (= :db.cardinality/many (:db/cardinality schema))
+     (when (= :dat.rel/many (schema/rel-cardinality schema))
        [:div {:tw "text-xs text-gray-500"}
        "(Hold ⌘ when clicking)"])]))
 

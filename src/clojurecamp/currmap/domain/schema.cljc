@@ -1,8 +1,9 @@
 (ns clojurecamp.currmap.domain.schema
   (:require
+   [bloom.commons.uuid :as uuid]
+   [dat.malli :as dm]
    [malli.core :as m]
-   [malli.transform :as mt]
-   [bloom.commons.uuid :as uuid])
+   [malli.transform :as mt])
   #?(:clj
      (:import
       [org.apache.commons.validator.routines UrlValidator])))
@@ -45,61 +46,70 @@
   [:re {:error/message "should be a link, starting with https://"} #"https://.*"])
 
 (def id
-  {:db/type :db.type/uuid
-   :db/unique :db.unique/identity
-   :db/spec :uuid})
+  {:dat/type :db.type/uuid
+   :dat/unique :dat.unique/identity})
 
 (defn rel
   [cardinality entity-type required-or-optional]
-  {:db/type :db.type/ref
-   :db/cardinality (case cardinality
-                     :one :db.cardinality/one
-                     :many :db.cardinality/many)
-   :db/spec (let [r [:map ;; open map, allowing other keys
-                     [(keyword
-                       (name entity-type)
-                       "id") :uuid]]
-                  s (case cardinality
-                      :one r
-                      :many [:sequential {:min 1} r])]
-              (case required-or-optional
-                :required
-                s
-                :optional
-                [:maybe s]))
-   :db/rel-entity-type entity-type
-   :db/input :input/rel})
+  (let [rel-id-key (keyword (name entity-type) "id")
+        spec (let [r [:map
+                      [rel-id-key :uuid]]
+                   s (case cardinality
+                       :one r
+                       :many [:sequential {:min 1} r])]
+               (case required-or-optional
+                 :required s
+                 :optional [:maybe s]))]
+    {:dat/rel [(case cardinality :one :dat.rel/one :many :dat.rel/many)
+               entity-type
+               rel-id-key]
+     :dat/spec spec
+     :db/input :input/rel}))
 
 (defn rel? [v]
-  (= :db.type/ref (:db/type v)))
+  (some? (:dat/rel v)))
+
+(defn rel-entity-type [opts]
+  (second (:dat/rel opts)))
+
+(defn rel-cardinality [opts]
+  (first (:dat/rel opts)))
 
 (def schema
   {:topic
    {:topic/id id
     :topic/parent (rel :one :topic :optional)
-    :topic/name {:db/spec NonBlankString
+    :topic/name {:dat/type :db.type/string
+                 :dat/spec NonBlankString
                  :db/input :input/text}}
 
    :outcome
    {:outcome/id id
     :outcome/topic (rel :one :topic :required)
-    :outcome/name {:db/spec NonBlankString
+    :outcome/name {:dat/type :db.type/string
+                   :dat/spec NonBlankString
                    :db/input :input/text}
-    :outcome/description {:db/spec [:maybe NonBlankString]
+    :outcome/description {:dat/type :db.type/string
+                          :dat/spec [:maybe NonBlankString]
                           :db/input :input/text}
-    :outcome/level {:db/spec Level
+    :outcome/level {:dat/type :db.type/keyword
+                    :dat/spec Level
                     :db/input :input/radio}
-    :outcome/type {:db/spec [:maybe OutcomeType]
+    :outcome/type {:dat/type :db.type/keyword
+                   :dat/spec [:maybe OutcomeType]
                    :db/input :input/radio}}
 
    :resource
    {:resource/id id
     :resource/outcome (rel :many :outcome :optional)
-    :resource/name {:db/spec NonBlankString
+    :resource/name {:dat/type :db.type/string
+                    :dat/spec NonBlankString
                     :db/input :input/text}
-    :resource/url {:db/spec URL
+    :resource/url {:dat/type :db.type/string
+                   :dat/spec URL
                    :db/input :input/text}
-    :resource/description {:db/spec [:maybe NonBlankString]
+    :resource/description {:dat/type :db.type/string
+                           :dat/spec [:maybe NonBlankString]
                            :db/input :input/text}}
 
    :rating
@@ -107,33 +117,40 @@
     :rating/user (rel :one :user :required)
     :rating/resource (rel :one :resource :required)
     :rating/outcome (rel :one :outcome :required)
-    :rating/value {:db/spec RatingValue
+    :rating/value {:dat/type :db.type/keyword
+                   :dat/spec RatingValue
                    :db/input :input/radio}}
 
    :user
    {:user/id id
-    :user/name {:db/spec NonBlankString
+    :user/name {:dat/type :db.type/string
+                :dat/spec NonBlankString
                 :db/input :input/text}
-    :user/email {:db/spec Email}
+    :user/email {:dat/type :db.type/string
+                 :dat/spec Email}
     :user/badge-working-towards (rel :many :badge :optional)
     :user/badge-in-progress (rel :many :badge :optional)}
 
    :badge-group
    {:badge-group/id id
-    :badge-group/name {:db/spec NonBlankString
+    :badge-group/name {:dat/type :db.type/string
+                       :dat/spec NonBlankString
                        :db/input :input/text}}
 
    :badge
    {:badge/id id
     :badge/group (rel :one :badge-group :required)
-    :badge/level {:db/spec pos-int?
+    :badge/level {:dat/type :db.type/long
+                  :dat/spec :pos-int
                   :db/input :input/text}
     :badge/prerequisite (rel :many :badge :optional)
     :badge/topic (rel :one :topic :required)
     :badge/outcome (rel :many :outcome :optional)
-    :badge/name {:db/spec NonBlankString
+    :badge/name {:dat/type :db.type/string
+                 :dat/spec NonBlankString
                  :db/input :input/text}
-    :badge/description {:db/spec [:maybe NonBlankString]
+    :badge/description {:dat/type :db.type/string
+                        :dat/spec [:maybe NonBlankString]
                         :db/input :input/text}}
 
    :assertion
@@ -141,18 +158,9 @@
     :assertion/badge (rel :one :badge :required)
     :assertion/user (rel :one :user :required)
     :assertion/issued-by (rel :one :user :required)
-    :assertion/issued-at {:db/spec inst?
+    :assertion/issued-at {:dat/type :db.type/instant
+                          :dat/spec :inst
                           :db/input :input/datetime}}})
-
-(def datascript-schema
-  (->> schema
-       vals
-       (apply concat)
-       (into {})
-       ((fn [x]
-          (update-vals x #(select-keys % [:db/type
-                                          :db/cardinality
-                                          :db/unique]))))))
 
 (defn attr->entity-type
   [attr]
@@ -166,8 +174,7 @@
        keys
        (some (fn [k]
                (when (= "id" (name k))
-                 (keyword (namespace k))))))
-  #_(attr->entity-type (key (first entity))))
+                 (keyword (namespace k)))))))
 
 #_(entity->entity-type {:topic/id "123"})
 
@@ -198,8 +205,9 @@
   [entity-type]
   (into [:map]
         (->> (schema entity-type)
-             (map (fn [[attr opts]]
-                    [attr (:db/spec opts)])))))
+             (keep (fn [[attr opts]]
+                     (when-let [spec (dm/->malli-spec opts)]
+                       [attr spec]))))))
 
 #_(malli-spec-for :topic)
 
@@ -209,18 +217,24 @@
              (map (fn [k]
                     [k (malli-spec-for k)])))))
 
-(def valid?
-  ;; precompiled for performance
-  (partial (m/validator Entity)))
+#_(def valid?
+    (partial (m/validator Entity)))
+
+(defn valid?
+  [e]
+  (m/validate Entity e))
 
 #_(valid?
    {:user/id #uuid "577d2583-b74b-4bc8-9af2-0671964c83b4"
     :user/email "alice@example.com"})
 
-(def strip-extra-keys
+#_(def strip-extra-keys
   (partial
-   ;; precompiled for performance
    (m/decoder Entity mt/strip-extra-keys-transformer)))
+
+(defn strip-extra-keys
+  [e]
+  (m/decode Entity e mt/strip-extra-keys-transformer))
 
 #_(strip-extra-keys
    {:resource/id #uuid "395a1060-78c7-4ccf-9344-258c937ef4ed"
@@ -236,7 +250,7 @@
        (map (fn [[attr opts]]
               (cond
                 (rel? opts)
-                {attr [(id-key-for (:db/rel-entity-type opts))]}
+                {attr [(id-key-for (rel-entity-type opts))]}
                 :else
                 attr)))))
 
@@ -249,4 +263,3 @@
       (assoc (id-key-for entity-type) (uuid/random))))
 
 #_(blank :topic)
-
