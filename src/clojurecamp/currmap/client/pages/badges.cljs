@@ -190,20 +190,21 @@
                                        [?u :user/badge-in-progress ?b]
                                        [?b :badge/id ?b-id]]
                                      user-id)
-        assertions @(state/q '[:find [?assertion-id ...]
+        assertions @(state/q '[:find ?assertion-id ?issued-at
                                :in $ ?user-id
                                :where
                                [?u :user/id ?user-id]
                                [?a :assertion/user ?u]
-                               [?a :assertion/id ?assertion-id]]
+                               [?a :assertion/id ?assertion-id]
+                               [?a :assertion/issued-at ?issued-at]]
                              user-id)]
     [:div
      [:div
-      [:h3 {:tw "font-bold"} "Badges"]
-      (for [assertion-id assertions]
-        ^{:key assertion-id}
-        [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]
-
+      [:h3 {:tw "font-bold"} "In Progress"]
+      (for [badge-id in-progress-badges]
+        ^{:key badge-id}
+        [:div
+         [badges/badge-pill-view badge-id]])]
      [:div
       [:h3 {:tw "font-bold"} "Working Towards"]
       (for [badge-id working-towards-badges]
@@ -211,11 +212,12 @@
         [:div
          [badges/badge-pill-view badge-id]])]
      [:div
-      [:h3 {:tw "font-bold"} "In Progress"]
-      (for [badge-id in-progress-badges]
-        ^{:key badge-id}
-        [:div
-         [badges/badge-pill-view badge-id]])]]))
+      [:h3 {:tw "font-bold"} "Badges"]
+      (for [[assertion-id] (->> assertions
+                                (sort-by second)
+                                reverse)]
+        ^{:key assertion-id}
+        [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]))
 
 (defn badges-map-with-sidebar-view
   [{:keys [active-badge-id sidebar]}]
