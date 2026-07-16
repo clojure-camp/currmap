@@ -1,4 +1,12 @@
-(ns clojurecamp.currmap.client.ui.common)
+(ns clojurecamp.currmap.client.ui.common
+  (:require
+   [clojure.string :as string]))
+
+(defn avatar-view
+  [{:keys [name tw]}]
+  [:div {:tw ["rounded bg-gray-300 flex items-center justify-center font-bold text-gray-500 shrink-0"
+              (or tw "w-20 h-20 text-2xl")]}
+   (some-> name (subs 0 1) string/upper-case)])
 
 (defn icon-button
   [opts]

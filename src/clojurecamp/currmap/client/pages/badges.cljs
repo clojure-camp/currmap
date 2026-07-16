@@ -1,10 +1,12 @@
 (ns clojurecamp.currmap.client.pages.badges
   (:require
    [clojure.string :as string]
+   [bloom.commons.pages :as pages]
    [reagent.core :as r]
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.badge-map :as bm]
-   [clojurecamp.currmap.client.ui.badges :as badges]))
+   [clojurecamp.currmap.client.ui.badges :as badges]
+   [clojurecamp.currmap.client.ui.common :as common]))
 
 (defn date-format [inst]
   (.toLocaleDateString inst
@@ -18,23 +20,26 @@
   (let [assertion @(state/pull-ident
                     '[:assertion/id
                       {:assertion/badge [:badge/id]}
+                      {:assertion/user [:user/id]}
                       {:assertion/issued-by [:user/id
                                              :user/name]}
                       :assertion/issued-at]
-                    [:assertion/id assertion-id])]
-    [:div
+                    [:assertion/id assertion-id])
+        granting-user (:assertion/issued-by assertion)
+        self-granted? (= (:user/id granting-user)
+                         (:user/id (:assertion/user assertion)))]
+    [:div {:tw "flex items-center justify-between gap-2"}
      (when (contains? show-attrs :badge-name)
        [badges/badge-pill-view (:badge/id (:assertion/badge assertion))])
-     " "
-     (when (contains? show-attrs :issued-by)
-       (let [granting-user (:assertion/issued-by assertion)]
-         (if (= (:user/id granting-user)
-                (:user/id @state/user))
-           "(Self-Granted)"
-           (str "(Granted by " (:user/name granting-user) ")"))))
-     " "
-     (when (contains? show-attrs :issued-at)
-       (date-format (:assertion/issued-at assertion)))]))
+     [:div {:tw "flex items-center gap-2 ml-auto"}
+      (when (and (contains? show-attrs :issued-by)
+                 (not self-granted?))
+        [:a {:href (pages/path-for [:user-profile {:user-id (:user/id granting-user)}])}
+         [common/avatar-view {:name (:user/name granting-user)
+                              :tw "w-5 h-5 text-xs"}]])
+      (when (contains? show-attrs :issued-at)
+        [:div {:tw "text-sm text-gray-500 tabular-nums"}
+         (date-format (:assertion/issued-at assertion))])]]))
 
 (defn badges-map-view
   [{:keys [active-badge-id]}]
@@ -173,10 +178,22 @@
            "Remove from in-progress"
            "Add to in-progress")]])]))
 
+(defn profile-header-view
+  [user-id]
+  (let [user @(state/pull-ident '[:user/id :user/name] [:user/id user-id])]
+    [:div {:tw "flex items-center gap-3 pb-4 border-b border-gray-200"}
+     [common/avatar-view {:name (:user/name user)}]
+     [:div {:tw "flex flex-col gap-2"}
+      [:div {:tw "text-lg font-bold"} (:user/name user)]
+      ;; links placeholder
+      [:div {:tw "flex justify-start gap-3 text-sm text-gray-400"}
+       (for [label ["GitHub" "Website" "LinkedIn"]]
+         ^{:key label}
+         [:a {:tw "bg-gray-100"} label])]]]))
+
 (defn user-profile-badges-view
-  []
-  (let [user-id (:user/id @state/user)
-        working-towards-badges @(state/q '[:find [?b-id ...]
+  [user-id]
+  (let [working-towards-badges @(state/q '[:find [?b-id ...]
                                            :in $ ?user-id
                                            :where
                                            [?u :user/id ?user-id]
@@ -198,26 +215,28 @@
                                [?a :assertion/id ?assertion-id]
                                [?a :assertion/issued-at ?issued-at]]
                              user-id)]
-    [:div
+    [:div {:tw "flex flex-col gap-4"}
+     [profile-header-view user-id]
      [:div
-      [:h3 {:tw "font-bold"} "In Progress"]
-      (for [badge-id in-progress-badges]
-        ^{:key badge-id}
-        [:div
-         [badges/badge-pill-view badge-id]])]
+      [:h3 {:tw "text-xs font-bold uppercase tracking-wide text-gray-500 mb-1"} "In Progress"]
+      [:div {:tw "flex flex-wrap gap-1"}
+       (for [badge-id in-progress-badges]
+         ^{:key badge-id}
+         [badges/badge-pill-view badge-id])]]
      [:div
-      [:h3 {:tw "font-bold"} "Working Towards"]
-      (for [badge-id working-towards-badges]
-        ^{:key badge-id}
-        [:div
-         [badges/badge-pill-view badge-id]])]
+      [:h3 {:tw "text-xs font-bold uppercase tracking-wide text-gray-500 mb-1"} "Working Towards"]
+      [:div {:tw "flex flex-wrap gap-1"}
+       (for [badge-id working-towards-badges]
+         ^{:key badge-id}
+         [badges/badge-pill-view badge-id])]]
      [:div
-      [:h3 {:tw "font-bold"} "Badges"]
-      (for [[assertion-id] (->> assertions
-                                (sort-by second)
-                                reverse)]
-        ^{:key assertion-id}
-        [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]))
+      [:h3 {:tw "text-xs font-bold uppercase tracking-wide text-gray-500 mb-1"} "Badges"]
+      [:div {:tw "flex flex-col gap-1"}
+       (for [[assertion-id] (->> assertions
+                                 (sort-by second)
+                                 reverse)]
+         ^{:key assertion-id}
+         [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]]))
 
 (defn badges-map-with-sidebar-view
   [{:keys [active-badge-id sidebar]}]
@@ -225,7 +244,7 @@
    [:div {:tw "w-75% overflow-x-auto"}
     [badges-map-view {:active-badge-id active-badge-id}]]
    (when sidebar
-     [:div {:tw "w-25% bg-gray-100 p-2"}
+     [:div {:tw "w-25% bg-gray-100 p-4"}
       sidebar])])
 
 (defn badge-page-view
@@ -237,9 +256,11 @@
                [current-badge-view badge-id])}])
 
 (defn badges-profile-page-view
-  [_]
-  [badges-map-with-sidebar-view
-   {:sidebar [user-profile-badges-view]}])
+  [[_ {:keys [user-id]}]]
+  (let [user-id (or user-id (:user/id @state/user))]
+    [badges-map-with-sidebar-view
+     {:sidebar ^{:key user-id}
+      [user-profile-badges-view user-id]}]))
 
 (def pages
   [{:page/id :badges
@@ -251,4 +272,8 @@
     :page/parameters {:badge-id :uuid}}
    {:page/id :badges-profile
     :page/view #'badges-profile-page-view
-    :page/path "/badges-profile"}])
+    :page/path "/badges-profile"}
+   {:page/id :user-profile
+    :page/view #'badges-profile-page-view
+    :page/path "/badges-profile/:user-id"
+    :page/parameters {:user-id :uuid}}])
