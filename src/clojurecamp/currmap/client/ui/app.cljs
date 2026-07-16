@@ -3,7 +3,7 @@
    [bloom.commons.pages :as pages]
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.resources :as ui.resources]
-   [clojurecamp.currmap.client.ui.badges :as badges]
+   [clojurecamp.currmap.client.pages.badges :as badges]
    [clojurecamp.currmap.client.ui.common :as ui]
    [clojurecamp.currmap.client.ui.spreadsheet :as ui.spreadsheet]))
 

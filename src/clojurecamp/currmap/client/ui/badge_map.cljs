@@ -1,51 +1,11 @@
 (ns clojurecamp.currmap.client.ui.badge-map
   (:require
    [bloom.commons.pages :as pages]
-   [clojure.string :as str]
    [reagent.core :as r]
    [clojurecamp.currmap.client.ui.bezier :as bezier]
    [clojurecamp.currmap.client.state :as state]
+   [clojurecamp.currmap.client.ui.badges :as badges]
    [goog.object :as o]))
-
-(defn color [x]
-  (str "oklch(60% 50%" (hash x) ")"))
-
-(defn midtone [x]
-  (str "oklch(80% 50%" (hash x) ")"))
-
-(def level->roman
-  {1 "I" 2 "II" 3 "III"})
-
-(defn star-points-str [cx cy outer-r inner-r]
-  (->> (range 24)
-       (map (fn [k]
-              (let [angle (- (* k (/ js/Math.PI 12)) (/ js/Math.PI 2))
-                    r (if (even? k) outer-r inner-r)]
-                (str (+ cx (* r (js/Math.cos angle)))
-                     ","
-                     (+ cy (* r (js/Math.sin angle)))))))
-       (str/join " ")))
-
-(defn hexagon-points-str [cx cy r pointy-top?]
-  (->> (range 6)
-       (map (fn [k]
-              (let [angle (- (* k (/ js/Math.PI 3)) (if pointy-top?
-                                                      (/ js/Math.PI 2)
-                                                      0))]
-                (str (+ cx (* r (js/Math.cos angle)))
-                     ","
-                     (+ cy (* r (js/Math.sin angle)))))))
-       (str/join " ")))
-
-(defn ribbon-points-str [cx top-y]
-  (let [length 15
-        half-width 7]
-    (str/join " "
-              [(str (- cx half-width) "," top-y)
-               (str (+ cx half-width) "," top-y)
-               (str (+ cx half-width) "," (+ top-y length))
-               (str cx "," (+ top-y (- length 3)))
-               (str (- cx half-width) "," (+ top-y length))])))
 
 (defn wait-for [get-value]
   (js/Promise.
@@ -61,6 +21,7 @@
 
 (defn port-id->badge-id [port-id]
   (subs port-id 0 (- (count port-id) 2)))
+
 (def group-label-left-pad 5)
 
 (defn ->elk [badges]
@@ -122,6 +83,7 @@
                                               :elk.padding "[top=3,right=5,bottom=3,left=5]"
                                               :elk.layered.spacing.nodeNodeBetweenLayers 5}
                               :children (into [{:id label-id
+                                                :group-id group-id
                                                 :group-label group-name
                                                 :width (+ group-label-left-pad (* 7 (count group-name)))
                                                 :height node-height
@@ -150,25 +112,7 @@
   (r/with-let
    [*hover? (r/atom false)]
    (let [badge-id (:badge/id badge)
-         {:keys [granted? self-granted? in-progress?
-                 on-path-to-working-towards? working-towards? viewing?]} badge-states
-         hover? (or (viewing? badge-id)
-                    @*hover?)
-         cx (+ x (/ width 2))
-         cy (+ y (/ height 2))
-         outer-r (* (min width height) 0.5)
-         inner-r (* outer-r 0.80)
-         {:keys [highlight base midtone]} colors
-         ;;    f                  shape     fill      stroke    text    h:fill  h:stroke  h:text   ribbon
-         conf [[granted?          ::star    highlight highlight base    base    highlight highlight true]
-               [self-granted?     ::star    highlight highlight base    base    highlight highlight false]
-               [in-progress?      ::star    midtone   midtone   base    midtone highlight highlight false]
-               [on-path-to-working-towards?
-                                  ::hexagon midtone   midtone   base    midtone highlight highlight false]
-               [working-towards?  ::hexagon midtone   midtone   base    midtone highlight highlight false]
-               [(constantly true) ::hexagon base      midtone   midtone base    highlight highlight false]]
-         [shape fill stroke text h-fill h-stroke h-text ribbon?]
-         (some (fn [[f & row]] (when (f badge-id) row)) conf)]
+         hover? (or (:viewing? badge-states) @*hover?)]
      [:g {:tw "cursor-pointer"
           :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))
           :on-mouse-enter (fn []
@@ -177,26 +121,18 @@
           :on-mouse-leave (fn []
                             (reset! *hover? false)
                             (reset! *hovered-badge-id nil))}
-      (when ribbon?
-        [:polygon {:points (ribbon-points-str cx (+ cy outer-r -3))
-                   :fill midtone}])
-      [:polygon {:points (case shape
-                           ::star (star-points-str cx cy outer-r inner-r)
-                           ::hexagon (hexagon-points-str cx cy outer-r false))
-                 :fill (if hover? h-fill fill)
-                 :stroke (if hover? h-stroke stroke)
-                 :stroke-width 1}]
-      [:text {:x cx
-              :y (+ cy 1)
-              :text-anchor "middle"
-              :alignment-baseline "middle"
-              :fill (if hover? h-text text)
-              :font-size 10
-              :pointer-events "none"}
-       (level->roman (:badge/level badge))]])))
+      [badges/badge-shape-view
+       {:x x
+        :y y
+        :width width
+        :height height
+        :colors colors
+        :hover? hover?}
+       badge
+       badge-states]])))
 
 (defn pure-layout-view
-  [{:keys [layout badges-by-id badge-states]}]
+  [{:keys [layout badges-by-id badges-states]}]
   (r/with-let
    [*hovered-badge-id (r/atom nil)]
    [:svg {:style {:width (.-width layout)
@@ -205,12 +141,12 @@
          (js->clj (.-children layout))]
      ^{:key id}
      (let [group-height 30
-           group-label (->> children
+           group-id (->> children
                             (map (fn [x]
-                                   (get x "group-label")))
+                                   (get x "group-id")))
                             first)
-           base-color (color group-label)
-           midtone-color (midtone group-label)
+           base-color (badges/color group-id)
+           midtone-color (badges/midtone group-id)
            highlight-color "#fff"]
        [:g {:transform (str "translate(" x "," y ")")}
         [:rect {:width width
@@ -241,7 +177,9 @@
                          :height height
                          :*hovered-badge-id *hovered-badge-id}
              (badges-by-id badge-id)
-             badge-states]))]))
+             (state/badge-states
+              badges-states
+              badge-id)]))]))
 
    (for [{:strs [id sections connected?]}
          (->> (js->clj (.-edges layout))
@@ -279,55 +217,6 @@
         {:layout @*layout
          :badges-by-id (zipmap (map :badge/id badges)
                                badges)
-         :badge-states {:granted? (set @(state/q '[:find [?badge-id ...]
-                                                   :in $ ?user-id
-                                                   :where
-                                                   [?u :user/id ?user-id]
-                                                   [?a :assertion/user ?u]
-                                                   [?a :assertion/issued-by ?u2]
-                                                   [(not= ?u ?u2)]
-                                                   [?a :assertion/badge ?b]
-                                                   [?b :badge/id ?badge-id]]
-                                                 (:user/id @state/user)))
-                        :self-granted? (set @(state/q '[:find [?badge-id ...]
-                                                        :in $ ?user-id
-                                                        :where
-                                                        [?u :user/id ?user-id]
-                                                        [?a :assertion/user ?u]
-                                                        [?a :assertion/issued-by ?u]
-                                                        [?a :assertion/badge ?b]
-                                                        [?b :badge/id ?badge-id]]
-                                                      (:user/id @state/user)))
-                        :in-progress? (set @(state/q '[:find [?badge-id ...]
-                                                       :in $ ?user-id
-                                                       :where
-                                                       [?u :user/id ?user-id]
-                                                       [?u :user/badge-in-progress ?b]
-                                                       [?b :badge/id ?badge-id]]
-                                                     (:user/id @state/user)))
-                        :on-path-to-working-towards? (set
-                                                      ;; avoiding posh because it doesn't work well with rules
-                                                      ;; therefore this query is not reactive
-                                                      ;; but this component rerenders when working-towards? changes
-                                                      ;; anyway, so it should be fine
-                                                      (state/direct-q '[:find [?badge-id ...]
-                                                                        :in $ ?user-id %
-                                                                        :where
-                                                                        [?u :user/id ?user-id]
-                                                                        [?u :user/badge-working-towards ?b]
-                                                                        (prerequisite ?b ?pb)
-                                                                        [?pb :badge/id ?badge-id]]
-                                                                      (:user/id @state/user)
-                                                                      '[[(prerequisite ?badge ?p-badge)
-                                                                         [?badge :badge/prerequisite ?p-badge]]
-                                                                        [(prerequisite ?badge ?p-badge)
-                                                                         [?badge :badge/prerequisite ?mid-badge]
-                                                                         (prerequisite ?mid-badge ?p-badge)]]))
-                        :working-towards? (set @(state/q '[:find [?badge-id ...]
-                                                           :in $ ?user-id
-                                                           :where
-                                                           [?u :user/id ?user-id]
-                                                           [?u :user/badge-working-towards ?b]
-                                                           [?b :badge/id ?badge-id]]
-                                                         (:user/id @state/user)))
-                        :viewing? #{active-badge-id}}}])]))
+         :badges-states (assoc
+                        @state/user-badges-states
+                        :viewing? #{active-badge-id})}])]))

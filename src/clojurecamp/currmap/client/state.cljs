@@ -137,3 +137,70 @@
                  (when user
                    (swap! state assoc :db/user user)))))
     nil))
+
+(defonce user-badges-states
+  (r/reaction
+   {:granted?
+    (set @(q '[:find [?badge-id ...]
+               :in $ ?user-id
+               :where
+               [?u :user/id ?user-id]
+               [?a :assertion/user ?u]
+               [?a :assertion/issued-by ?u2]
+               [(not= ?u ?u2)]
+               [?a :assertion/badge ?b]
+               [?b :badge/id ?badge-id]]
+             (:user/id @user)))
+    :self-granted?
+    (set @(q '[:find [?badge-id ...]
+               :in $ ?user-id
+               :where
+               [?u :user/id ?user-id]
+               [?a :assertion/user ?u]
+               [?a :assertion/issued-by ?u]
+               [?a :assertion/badge ?b]
+               [?b :badge/id ?badge-id]]
+             (:user/id @user)))
+    :in-progress?
+    (set @(q '[:find [?badge-id ...]
+               :in $ ?user-id
+               :where
+               [?u :user/id ?user-id]
+               [?u :user/badge-in-progress ?b]
+               [?b :badge/id ?badge-id]]
+             (:user/id @user)))
+    :on-path-to-working-towards?
+    (set
+     ;; avoiding posh because it doesn't work well with rules
+     ;; therefore this query is not reactive
+     ;; but this component rerenders when working-towards? changes
+     ;; anyway, so it should be fine
+     (direct-q '[:find [?badge-id ...]
+                 :in $ ?user-id %
+                 :where
+                 [?u :user/id ?user-id]
+                 [?u :user/badge-working-towards ?b]
+                 (prerequisite ?b ?pb)
+                 [?pb :badge/id ?badge-id]]
+               (:user/id @user)
+               '[[(prerequisite ?badge ?p-badge)
+                  [?badge :badge/prerequisite ?p-badge]]
+                 [(prerequisite ?badge ?p-badge)
+                  [?badge :badge/prerequisite ?mid-badge]
+                  (prerequisite ?mid-badge ?p-badge)]]))
+    :working-towards?
+    (set @(q '[:find [?badge-id ...]
+               :in $ ?user-id
+               :where
+               [?u :user/id ?user-id]
+               [?u :user/badge-working-towards ?b]
+               [?b :badge/id ?badge-id]]
+             (:user/id @user)))}))
+
+(defn badge-states
+  [badges-states badge-id]
+  (->> badges-states
+       (map (fn [[k v]]
+              [k (contains? v badge-id)]))
+       (into {})))
+
