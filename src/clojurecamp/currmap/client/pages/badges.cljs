@@ -217,24 +217,27 @@
         [:div
          [badges/badge-pill-view badge-id]])]]))
 
+(defn badges-map-with-sidebar-view
+  [{:keys [active-badge-id sidebar]}]
+  [:div {:tw "flex grow"}
+   [:div {:tw "w-75% overflow-x-auto"}
+    [badges-map-view {:active-badge-id active-badge-id}]]
+   (when sidebar
+     [:div {:tw "w-25% bg-gray-100 p-2"}
+      sidebar])])
+
 (defn badge-page-view
   [[_ {:keys [badge-id]}]]
-  [:div
-   [user-profile-badges-view]
+  [badges-map-with-sidebar-view
+   {:active-badge-id badge-id
+    :sidebar (when badge-id
+               ^{:key badge-id}
+               [current-badge-view badge-id])}])
 
-   [:br]
-   [:br]
-   [:br]
-   [:br]
-   [:br]
-   [:br]
-   [:div {:tw "flex grow"}
-    [:div {:tw "w-75% overflow-x-auto"}
-     [badges-map-view {:active-badge-id badge-id}]]
-    (when badge-id
-      [:div {:tw "w-25% bg-gray-100 p-2"}
-       ^{:key badge-id}
-       [current-badge-view badge-id]])]])
+(defn badges-profile-page-view
+  [_]
+  [badges-map-with-sidebar-view
+   {:sidebar [user-profile-badges-view]}])
 
 (def pages
   [{:page/id :badges
@@ -243,4 +246,7 @@
    {:page/id :badge
     :page/view #'badge-page-view
     :page/path "/badges/:badge-id"
-    :page/parameters {:badge-id :uuid}}])
+    :page/parameters {:badge-id :uuid}}
+   {:page/id :badges-profile
+    :page/view #'badges-profile-page-view
+    :page/path "/badges-profile"}])

@@ -11,7 +11,8 @@
   []
   (if @state/user
     [:div {:tw "flex items-center gap-2"}
-     [:span {:tw "text-blue-400 text-sm"}
+     [:a {:href (pages/path-for [:badges-profile])
+          :tw "text-blue-400 text-sm"}
       (:user/name @state/user)]
      [ui/text-button
       {:label "Log Out"
