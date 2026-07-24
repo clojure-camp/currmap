@@ -1,45 +1,10 @@
 (ns clojurecamp.currmap.client.pages.badges
   (:require
-   [clojure.string :as string]
-   [bloom.commons.pages :as pages]
-   [reagent.core :as r]
    [clojurecamp.currmap.client.state :as state]
    [clojurecamp.currmap.client.ui.badge-map :as bm]
+   [clojurecamp.currmap.client.ui.badge-sidebar :as badge-sidebar]
    [clojurecamp.currmap.client.ui.badges :as badges]
    [clojurecamp.currmap.client.ui.common :as common]))
-
-(defn date-format [inst]
-  (.toLocaleDateString inst
-                       "en-CA"
-                       #js {:year "numeric"
-                            :month "2-digit"
-                            :day "2-digit"}))
-
-(defn assertion-view
-  [assertion-id show-attrs]
-  (let [assertion @(state/pull-ident
-                    '[:assertion/id
-                      {:assertion/badge [:badge/id]}
-                      {:assertion/user [:user/id]}
-                      {:assertion/issued-by [:user/id
-                                             :user/name]}
-                      :assertion/issued-at]
-                    [:assertion/id assertion-id])
-        granting-user (:assertion/issued-by assertion)
-        self-granted? (= (:user/id granting-user)
-                         (:user/id (:assertion/user assertion)))]
-    [:div {:tw "flex items-center justify-between gap-2"}
-     (when (contains? show-attrs :badge-name)
-       [badges/badge-pill-view (:badge/id (:assertion/badge assertion))])
-     [:div {:tw "flex items-center gap-2 ml-auto"}
-      (when (and (contains? show-attrs :issued-by)
-                 (not self-granted?))
-        [:a {:href (pages/path-for [:user-profile {:user-id (:user/id granting-user)}])}
-         [common/avatar-view {:name (:user/name granting-user)
-                              :tw "w-5 h-5 text-xs"}]])
-      (when (contains? show-attrs :issued-at)
-        [:div {:tw "text-sm text-gray-500 tabular-nums"}
-         (date-format (:assertion/issued-at assertion))])]]))
 
 (defn badges-map-view
   [{:keys [active-badge-id]}]
@@ -59,124 +24,6 @@
                     doall)]
     [bm/layout-view {:badges badges
                      :active-badge-id active-badge-id}]))
-
-(defn grant-to-other-user-view
-  [badge-id]
-  (r/with-let
-    [show-user-search? (r/atom false)
-     results (r/atom nil)]
-    (if @show-user-search?
-      [:div
-       [:input {:type "search"
-                :autofocus true
-                :placeholder "Search for user by name"
-                :on-change (fn [e]
-                             (reset! results (->> @(state/q '[:find ?user-id ?name
-                                                              :in $ ?current-user-id
-                                                              :where
-                                                              [?u :user/id ?user-id]
-                                                              [?u :user/name ?name]
-                                                              [(not= ?user-id ?current-user-id)]]
-                                                            (:user/id @state/user))
-                                                  (filter (fn [[_ user-name]]
-                                                            (string/includes?
-                                                             (string/lower-case user-name)
-                                                             (string/lower-case (.. e -target -value))))))))}]
-       (when @results
-         [:div
-          (for [[user-id user-name] @results]
-            ^{:key user-id}
-            [:div {:on-click (fn []
-                               (when (js/confirm (str "Are you sure you want to grant this badge to " user-name "?"))
-                                 (-> (state/remote-do!
-                                      [:api/grant-badge!
-                                       {:target-user-id user-id
-                                        :badge-id badge-id}])
-                                     (.then (fn [_] (js/alert "Badge granted successfully!"))))))}
-             user-name])])]
-      (let [assertion-from-third-party? @(state/q '[:find ?u .
-                                                    :in $ ?user-id ?badge-id
-                                                    :where
-                                                    [?u :user/id ?user-id]
-                                                    [?b :badge/id ?badge-id]
-                                                    [?a :assertion/user ?u]
-                                                    [?a :assertion/badge ?b]
-                                                    [?a :assertion/issued-by ?issuer]
-                                                    [(not= ?issuer ?u)]]
-                                                  (:user/id @state/user)
-                                                  badge-id)]
-        (when assertion-from-third-party?
-          [:button {:on-click (fn [] (reset! show-user-search? true))}
-           "[GRANT TO OTHER USER]"])))))
-
-(defn current-badge-view
-  [badge-id]
-  (let [badge @(state/pull-ident
-                '[:badge/id
-                  :badge/name
-                  :badge/description]
-                [:badge/id badge-id])
-        current-user-working-towards? (boolean @(state/q '[:find ?u .
-                                                           :in $ ?user-id ?badge-id
-                                                           :where
-                                                           [?u :user/id ?user-id]
-                                                           [?b :badge/id ?badge-id]
-                                                           [?u :user/badge-working-towards ?b]]
-                                                         (:user/id @state/user)
-                                                         badge-id))
-        current-user-in-progress? (boolean @(state/q '[:find ?u .
-                                                       :in $ ?user-id ?badge-id
-                                                       :where
-                                                       [?u :user/id ?user-id]
-                                                       [?b :badge/id ?badge-id]
-                                                       [?u :user/badge-in-progress ?b]]
-                                                     (:user/id @state/user)
-                                                     badge-id))
-        current-user-assertion-ids @(state/q '[:find [?a-id ...]
-                                               :in $ ?user-id ?badge-id
-                                               :where
-                                               [?u :user/id ?user-id]
-                                               [?b :badge/id ?badge-id]
-                                               [?a :assertion/user ?u]
-                                               [?a :assertion/badge ?b]
-                                               [?a :assertion/id ?a-id]
-                                               [?a :assertion/issued-by ?issuer]]
-                                             (:user/id @state/user)
-                                             badge-id)]
-    [:div
-     [:div (:badge/name badge)]
-     (when @state/user
-       [:div.user-badges
-        (if (seq current-user-assertion-ids)
-          [:div
-           (for [assertion-id current-user-assertion-ids]
-             ^{:key assertion-id}
-             [assertion-view assertion-id #{:issued-by :issued-at}])]
-          [:button {:on-click (fn []
-                                (state/remote-do!
-                                 [:api/grant-badge!
-                                  {:target-user-id (:user/id @state/user)
-                                   :badge-id badge-id}]))}
-           "[GRANT TO SELF!]"])
-
-        [grant-to-other-user-view badge-id]
-
-        [:button {:on-click (fn []
-                              (state/remote-do!
-                               [:api/update-working-towards-badge!
-                                {:badge-id badge-id
-                                 :add? (not current-user-working-towards?)}]))}
-         (if current-user-working-towards?
-           "Remove from working towards"
-           "Add to working towards")]
-        [:button {:on-click (fn []
-                              (state/remote-do!
-                               [:api/update-in-progress-badge!
-                                {:badge-id badge-id
-                                 :add? (not current-user-in-progress?)}]))}
-         (if current-user-in-progress?
-           "Remove from in-progress"
-           "Add to in-progress")]])]))
 
 (defn profile-header-view
   [user-id]
@@ -236,7 +83,7 @@
                                  (sort-by second)
                                  reverse)]
          ^{:key assertion-id}
-         [assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]]))
+         [badge-sidebar/assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]]))
 
 (defn badges-map-with-sidebar-view
   [{:keys [active-badge-id sidebar]}]
@@ -244,7 +91,7 @@
    [:div {:tw "grow min-w-0"}
     [badges-map-view {:active-badge-id active-badge-id}]]
    (when sidebar
-     [:div {:tw "w-25% bg-gray-100 p-4"}
+     [:div {:tw "w-30em shrink-0 bg-gray-100 p-4"}
       sidebar])])
 
 (defn badge-page-view
@@ -253,7 +100,7 @@
    {:active-badge-id badge-id
     :sidebar (when badge-id
                ^{:key badge-id}
-               [current-badge-view badge-id])}])
+               [badge-sidebar/current-badge-view badge-id])}])
 
 (defn badges-profile-page-view
   [[_ {:keys [user-id]}]]
