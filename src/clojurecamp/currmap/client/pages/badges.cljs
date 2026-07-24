@@ -240,8 +240,8 @@
 
 (defn badges-map-with-sidebar-view
   [{:keys [active-badge-id sidebar]}]
-  [:div {:tw "flex grow"}
-   [:div {:tw "w-75% overflow-x-auto"}
+  [:div {:tw "flex grow min-h-0"}
+   [:div {:tw "grow min-w-0"}
     [badges-map-view {:active-badge-id active-badge-id}]]
    (when sidebar
      [:div {:tw "w-25% bg-gray-100 p-4"}

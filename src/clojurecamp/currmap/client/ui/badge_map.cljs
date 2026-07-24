@@ -114,6 +114,8 @@
    (let [badge-id (:badge/id badge)
          hover? (or (:viewing? badge-states) @*hover?)]
      [:g {:tw "cursor-pointer"
+          ;; keep mousedown from starting a pan on the container
+          :on-mouse-down (fn [e] (.stopPropagation e))
           :on-click (fn [] (pages/navigate-to! [:badge {:badge-id badge-id}]))
           :on-mouse-enter (fn []
                             (reset! *hover? true)
@@ -135,7 +137,8 @@
   [{:keys [layout badges-by-id badges-states]}]
   (r/with-let
    [*hovered-badge-id (r/atom nil)]
-   [:svg {:style {:width (.-width layout)
+   [:svg {:tw "block shrink-0 m-auto"
+          :style {:width (.-width layout)
                   :height (.-height layout)}}
    (for [{:strs [id x y width _height children _edges]}
          (js->clj (.-children layout))]
@@ -207,11 +210,31 @@
   [{:keys [badges active-badge-id]}]
   (r/with-let
     [*layout (r/atom nil)
+     *container (r/atom nil)
+     *drag (r/atom nil)
      _ (-> (wait-for (fn []
                        (o/get js/window "ELK")))
            (.then (fn []
                     (layout! *layout badges))))]
-    [:div {:tw "relative w-80vw h-90vh"}
+    [:div {:ref (fn [el] (reset! *container el))
+           :tw ["relative w-full h-full overflow-auto select-none flex"
+                (if @*drag "cursor-grabbing" "cursor-grab")]
+           :on-mouse-down (fn [e]
+                            (when-let [el @*container]
+                              (.preventDefault e)
+                              (reset! *drag {:start-x (.-clientX e)
+                                             :start-y (.-clientY e)
+                                             :scroll-left (.-scrollLeft el)
+                                             :scroll-top (.-scrollTop el)})))
+           :on-mouse-move (fn [e]
+                            (when-let [d @*drag]
+                              (when-let [el @*container]
+                                (set! (.-scrollLeft el)
+                                      (- (:scroll-left d) (- (.-clientX e) (:start-x d))))
+                                (set! (.-scrollTop el)
+                                      (- (:scroll-top d) (- (.-clientY e) (:start-y d)))))))
+           :on-mouse-up (fn [] (reset! *drag nil))
+           :on-mouse-leave (fn [] (reset! *drag nil))}
      (when @*layout
        [pure-layout-view
         {:layout @*layout
