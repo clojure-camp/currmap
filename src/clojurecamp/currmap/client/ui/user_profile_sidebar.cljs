@@ -42,7 +42,7 @@
                                [?a :assertion/id ?assertion-id]
                                [?a :assertion/issued-at ?issued-at]]
                              user-id)]
-    [:div {:tw "flex flex-col gap-4"}
+    [:div {:tw "flex flex-col gap-4 p-4"}
      [profile-header-view user-id]
      [:div
       [:h3 {:tw "text-xs font-bold uppercase tracking-wide text-gray-500 mb-1"} "In Progress"]
