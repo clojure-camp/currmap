@@ -60,6 +60,7 @@
     (if @show-user-search?
       [:div
        [:input {:type "search"
+                :tw "p-1 text-xs"
                 :autofocus true
                 :placeholder "Search for user by name"
                 :on-change (fn [e]
@@ -142,6 +143,32 @@
    [:h3 {:tw "text-xs font-bold uppercase tracking-wide text-gray-500 mb-1"}
     label]
    (into [:div] children)])
+
+(defn assertion-status-view
+  "Compact 'granted' status shown inline in the actions bar (white text on the darker header color)."
+  [assertion-id]
+  (let [assertion @(state/pull-ident
+                    '[:assertion/id
+                      {:assertion/user [:user/id]}
+                      {:assertion/issued-by [:user/id
+                                             :user/name]}
+                      :assertion/issued-at]
+                    [:assertion/id assertion-id])
+        granting-user (:assertion/issued-by assertion)
+        self-granted? (= (:user/id granting-user)
+                         (:user/id (:assertion/user assertion)))]
+    [:div {:tw "flex items-center gap-1 text-xs text-white"}
+     [fa/fa-check-circle-solid {:tw "w-3 h-3"}]
+     (if self-granted?
+       "Self-Granted"
+       "Received")
+     (when-not self-granted?
+       [:a {:href (pages/path-for [:user-profile {:user-id (:user/id granting-user)}])
+            :tw "ml-2"}
+        [common/avatar-view {:name (:user/name granting-user)
+                             :tw "w-4 h-4 text-xs"}]])
+     [:span {:tw "tabular-nums opacity-80"}
+      (date-format (:assertion/issued-at assertion))]]))
 
 (defn assertion-view
   [assertion-id show-attrs]
@@ -248,20 +275,17 @@
         (badges/level->roman (:badge/level badge))]
        [:div {:tw "text-sm opacity-80"} (:badge/name badge)]]]
 
-     ;; ribbon: if the user already has it
-     (when (and @state/user (seq current-user-assertion-ids))
-       [:div {:tw "flex flex-col gap-1 rounded bg-green-50 border border-green-200 p-2"}
-        [:div {:tw "flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-green-700"}
-         [fa/fa-check-circle-solid {:tw "w-3 h-3"}]
-         "You have this badge"]
-        (for [assertion-id current-user-assertion-ids]
-          ^{:key assertion-id}
-          [assertion-view assertion-id #{:issued-by :issued-at}])])
-
      ;; actions
      (when @state/user
-       [:div {:tw "flex flex-wrap gap-2 px-4 py-2"
+       [:div {:tw "flex flex-wrap items-center gap-2 px-4 py-2 min-h-11"
               :style {:background (badges/darker (:badge-group/id badge-group))}}
+
+        ;; if the user already has it, show granted status in place of the grant actions
+        (for [assertion-id current-user-assertion-ids]
+          ^{:key assertion-id}
+          [assertion-status-view assertion-id])
+
+        [:div {:tw "grow"}]
 
         (when (empty? current-user-assertion-ids)
           [common/text-button
