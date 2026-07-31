@@ -58,35 +58,52 @@
     [show-user-search? (r/atom false)
      results (r/atom nil)]
     (if @show-user-search?
-      [:div
-       [:input {:type "search"
-                :tw "p-1 text-xs"
-                :autofocus true
-                :placeholder "Search for user by name"
-                :on-change (fn [e]
-                             (reset! results (->> @(state/q '[:find ?user-id ?name
-                                                              :in $ ?current-user-id
-                                                              :where
-                                                              [?u :user/id ?user-id]
-                                                              [?u :user/name ?name]
-                                                              [(not= ?user-id ?current-user-id)]]
-                                                            (:user/id @state/user))
-                                                  (filter (fn [[_ user-name]]
-                                                            (string/includes?
-                                                             (string/lower-case user-name)
-                                                             (string/lower-case (.. e -target -value))))))))}]
+      [:div {:tw "relative"}
+       [:div {:tw "flex items-center gap-1"}
+        [:input {:type "text"
+                 :tw "grow px-2 py-1 text-xs rounded border border-white bg-white/10 text-white placeholder-white/60 focus:outline-none focus:bg-white/20"
+                 :autofocus true
+                 :placeholder "Search for user by name"
+                 :on-change (fn [e]
+                              (let [query (.. e -target -value)]
+                                (reset! results (when-not (string/blank? query)
+                                                  (->> @(state/q '[:find ?user-id ?name
+                                                                   :in $ ?current-user-id
+                                                                   :where
+                                                                   [?u :user/id ?user-id]
+                                                                   [?u :user/name ?name]
+                                                                   [(not= ?user-id ?current-user-id)]]
+                                                                 (:user/id @state/user))
+                                                       (filter (fn [[_ user-name]]
+                                                                 (string/includes?
+                                                                  (string/lower-case user-name)
+                                                                  (string/lower-case query))))
+                                                       (sort-by second))))))}]
+        [:button {:tw "shrink-0 text-white hover:text-white/70"
+                  :on-click (fn []
+                              (reset! show-user-search? false)
+                              (reset! results nil))}
+         [fa/fa-times-circle-solid {:tw "w-3 h-3"}]]]
        (when @results
-         [:div
-          (for [[user-id user-name] @results]
-            ^{:key user-id}
-            [:div {:on-click (fn []
-                               (when (js/confirm (str "Are you sure you want to grant this badge to " user-name "?"))
-                                 (-> (state/remote-do!
-                                      [:api/grant-badge!
-                                       {:target-user-id user-id
-                                        :badge-id badge-id}])
-                                     (.then (fn [_] (js/alert "Badge granted successfully!"))))))}
-             user-name])])]
+         [:div {:tw "absolute left-0 top-full z-10 mt-1 w-full max-h-64 overflow-y-auto rounded border bg-white shadow"}
+          (if (seq @results)
+            (for [[user-id user-name] @results]
+              ^{:key user-id}
+              [:div {:tw "flex items-center gap-2 px-2 py-1 text-sm cursor-pointer hover:bg-gray-100"
+                     :on-click (fn []
+                                 (when (js/confirm (str "Are you sure you want to grant this badge to " user-name "?"))
+                                   (-> (state/remote-do!
+                                        [:api/grant-badge!
+                                         {:target-user-id user-id
+                                          :badge-id badge-id}])
+                                       (.then (fn [_]
+                                                (js/alert "Badge granted successfully!")
+                                                (reset! show-user-search? false)
+                                                (reset! results nil))))))}
+               [common/avatar-view {:name user-name
+                                    :tw "w-5 h-5 text-xs"}]
+               user-name])
+            [:div {:tw "px-2 py-1 text-sm text-gray-500"} "No users found"])])]
       (let [assertion-from-third-party? @(state/q '[:find ?u .
                                                     :in $ ?user-id ?badge-id
                                                     :where
