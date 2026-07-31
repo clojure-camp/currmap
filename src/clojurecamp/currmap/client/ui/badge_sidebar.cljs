@@ -263,26 +263,28 @@
        [:div {:tw "flex flex-wrap gap-2 px-4 py-2"
               :style {:background (badges/darker (:badge-group/id badge-group))}}
 
-        [common/text-button
-         {:variant :ghost
-          :label (if current-user-working-towards?
-                   "Remove from Working Towards"
-                   "Add to Working Towards")
-          :on-click (fn []
-                      (state/remote-do!
-                       [:api/update-working-towards-badge!
-                        {:badge-id badge-id
-                         :add? (not current-user-working-towards?)}]))}]
-        [common/text-button
-         {:variant :ghost
-          :label (if current-user-in-progress?
-                   "Remove from In-Progress"
-                   "Add to In-Progress")
-          :on-click (fn []
-                      (state/remote-do!
-                       [:api/update-in-progress-badge!
-                        {:badge-id badge-id
-                         :add? (not current-user-in-progress?)}]))}]
+        (when (empty? current-user-assertion-ids)
+          [common/text-button
+           {:variant :ghost
+            :label (if current-user-working-towards?
+                     "Remove from Working Towards"
+                     "Add to Working Towards")
+            :on-click (fn []
+                        (state/remote-do!
+                         [:api/update-working-towards-badge!
+                          {:badge-id badge-id
+                           :add? (not current-user-working-towards?)}]))}])
+        (when (empty? current-user-assertion-ids)
+          [common/text-button
+           {:variant :ghost
+            :label (if current-user-in-progress?
+                     "Remove from In-Progress"
+                     "Add to In-Progress")
+            :on-click (fn []
+                        (state/remote-do!
+                         [:api/update-in-progress-badge!
+                          {:badge-id badge-id
+                           :add? (not current-user-in-progress?)}]))}])
 
         (when (empty? current-user-assertion-ids)
           [common/text-button

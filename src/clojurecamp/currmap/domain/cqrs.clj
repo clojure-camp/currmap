@@ -286,7 +286,9 @@
                        {:assertion/badge [:badge/id badge-id]
                         :assertion/user [:user/id target-user-id]
                         :assertion/issued-by [:user/id user-id]
-                        :assertion/issued-at (java.util.Date.)})]]
+                        :assertion/issued-at (java.util.Date.)})
+                [:db/retract [:user/id target-user-id] :user/badge-working-towards [:badge/id badge-id]]
+                [:db/retract [:user/id target-user-id] :user/badge-in-progress [:badge/id badge-id]]]]
         (db/transact! tx)
         {:tx tx}))
     :return :tada/effect-return}
