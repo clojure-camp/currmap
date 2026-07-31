@@ -41,7 +41,17 @@
                                [?a :assertion/user ?u]
                                [?a :assertion/id ?assertion-id]
                                [?a :assertion/issued-at ?issued-at]]
-                             user-id)]
+                             user-id)
+        granted-assertions @(state/q '[:find ?assertion-id ?issued-at
+                                       :in $ ?user-id
+                                       :where
+                                       [?u :user/id ?user-id]
+                                       [?a :assertion/issued-by ?u]
+                                       [?a :assertion/user ?recipient]
+                                       [(not= ?u ?recipient)]
+                                       [?a :assertion/id ?assertion-id]
+                                       [?a :assertion/issued-at ?issued-at]]
+                                     user-id)]
     [:div {:tw "flex flex-col gap-4 p-4"}
      [profile-header-view user-id]
      [:div
@@ -63,4 +73,13 @@
                                  (sort-by second)
                                  reverse)]
          ^{:key assertion-id}
-         [badge-sidebar/assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]]))
+         [badge-sidebar/assertion-view assertion-id #{:badge-name :issued-by :issued-at}])]]
+     (when (seq granted-assertions)
+       [:div
+        [:h3 {:tw "text-xs font-bold uppercase tracking-wide text-gray-500 mb-1"} "Badges Granted"]
+        [:div {:tw "flex flex-col gap-1"}
+         (for [[assertion-id] (->> granted-assertions
+                                   (sort-by second)
+                                   reverse)]
+           ^{:key assertion-id}
+           [badge-sidebar/assertion-view assertion-id #{:badge-name :issued-to :issued-at}])]])]))
