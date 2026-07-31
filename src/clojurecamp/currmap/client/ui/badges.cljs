@@ -37,14 +37,15 @@
                      (+ cy (* r (js/Math.sin angle)))))))
        (str/join " ")))
 
-(defn ribbon-points-str [cx top-y]
-  (let [length 15
-        half-width 7]
+(defn ribbon-points-str [cx top-y r]
+  (let [length (* r 1.5)
+        half-width (* r 0.7)
+        notch (* r 0.3)]
     (str/join " "
               [(str (- cx half-width) "," top-y)
                (str (+ cx half-width) "," top-y)
                (str (+ cx half-width) "," (+ top-y length))
-               (str cx "," (+ top-y (- length 3)))
+               (str cx "," (+ top-y (- length notch)))
                (str (- cx half-width) "," (+ top-y length))])))
 
 (defn badge-shape-view
@@ -66,7 +67,7 @@
         (some (fn [[f & row]] (when (f badge-states) row)) conf)]
     [:g
      (when ribbon?
-       [:polygon {:points (ribbon-points-str cx (+ cy outer-r -3))
+       [:polygon {:points (ribbon-points-str cx (+ cy outer-r (* outer-r -0.5)) outer-r)
                   :fill midtone}])
      [:polygon {:points (case shape
                           ::star (star-points-str cx cy outer-r inner-r)
@@ -75,11 +76,11 @@
                 :stroke (if hover? h-stroke stroke)
                 :stroke-width 1}]
      [:text {:x cx
-             :y (+ cy 1)
+             :y cy
              :text-anchor "middle"
-             :alignment-baseline "middle"
+             :dominant-baseline "central"
              :fill (if hover? h-text text)
-             :font-size 10
+             :font-size outer-r
              :pointer-events "none"}
       (level->roman (:badge/level badge))]]))
 

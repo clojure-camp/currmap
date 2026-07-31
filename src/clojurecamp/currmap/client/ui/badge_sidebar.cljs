@@ -192,14 +192,16 @@
   (let [assertion @(state/pull-ident
                     '[:assertion/id
                       {:assertion/badge [:badge/id]}
-                      {:assertion/user [:user/id]}
+                      {:assertion/user [:user/id
+                                        :user/name]}
                       {:assertion/issued-by [:user/id
                                              :user/name]}
                       :assertion/issued-at]
                     [:assertion/id assertion-id])
         granting-user (:assertion/issued-by assertion)
+        receiving-user (:assertion/user assertion)
         self-granted? (= (:user/id granting-user)
-                         (:user/id (:assertion/user assertion)))]
+                         (:user/id receiving-user))]
     [:div {:tw "flex items-center justify-between gap-2"}
      (when (contains? show-attrs :badge-name)
        [badges/badge-pill-view (:badge/id (:assertion/badge assertion))])
@@ -208,6 +210,10 @@
                  (not self-granted?))
         [:a {:href (pages/path-for [:user-profile {:user-id (:user/id granting-user)}])}
          [common/avatar-view {:name (:user/name granting-user)
+                              :tw "w-5 h-5 text-xs"}]])
+      (when (contains? show-attrs :issued-to)
+        [:a {:href (pages/path-for [:user-profile {:user-id (:user/id receiving-user)}])}
+         [common/avatar-view {:name (:user/name receiving-user)
                               :tw "w-5 h-5 text-xs"}]])
       (when (contains? show-attrs :issued-at)
         [:div {:tw "text-sm text-gray-500 tabular-nums"}
@@ -278,7 +284,7 @@
                                              badge-id)]
     [:div {:tw "flex flex-col"}
      ;; header: icon + group name + level
-     [:div {:tw "flex items-center gap-3 p-4 text-white"
+     [:div {:tw "relative z-10 flex items-center gap-3 p-4 text-white"
             :style {:background (badges/color (:badge-group/id badge-group))}}
       [badges/badge-icon-view {:badge badge
                                :badge-states (state/badge-states
