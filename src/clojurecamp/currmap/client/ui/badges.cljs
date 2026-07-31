@@ -10,6 +10,9 @@
 (defn midtone [x]
   (str "oklch(80% 50%" (hash x) ")"))
 
+(defn darker [x]
+  (str "oklch(30% 50%" (hash x) ")"))
+
 (def level->roman
   {1 "I" 2 "II" 3 "III"})
 
@@ -112,7 +115,7 @@
                 [:badge/id badge-id])
         badge-group (:badge/group badge)]
     [:a {:href (pages/path-for [:badge {:badge-id badge-id}])
-         :tw "text-white rounded-sm px-1 py-0.5 inline-flex items-center gap-1"
+         :tw "text-white text-sm rounded pl-1 pr-2 py-0.75 inline-flex items-center gap-1"
          :style {:background (color (:badge-group/id badge-group))}}
      [badge-icon-view {:badge badge
                        :badge-states (state/badge-states

@@ -30,7 +30,7 @@
    [:div {:tw "grow min-w-0"}
     [badges-map-view {:active-badge-id active-badge-id}]]
    (when sidebar
-     [:div {:tw "w-30em shrink-0 bg-gray-100 p-4"}
+     [:div {:tw "w-30em shrink-0 bg-gray-100"}
       sidebar])])
 
 (defn badge-page-view

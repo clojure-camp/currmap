@@ -98,29 +98,43 @@
                                                   (:user/id @state/user)
                                                   badge-id)]
         (when assertion-from-third-party?
-          [:button {:on-click (fn [] (reset! show-user-search? true))}
-           "[GRANT TO OTHER USER]"])))))
+          [common/text-button
+           {:variant :ghost
+            :label "Grant to other user"
+            :on-click (fn [] (reset! show-user-search? true))}])))))
 
 (defn resource-rating-view
   [{:resource/keys [name url rating-values]}]
   [:div {:tw "group relative flex items-center gap-2"}
-   [:div {:tw "w-10 h-3 shrink-0"}
-    [spreadsheet/rating-view rating-values]]
+   ;; hovering the bar graph (not the whole line) reveals the breakdown overlay
+   [:div {:tw "group/bar relative w-10 h-3 shrink-0"}
+    [spreadsheet/rating-view rating-values]
+    ;; hover-over rating breakdown, echoing spreadsheet's rating legend
+    [:div {:tw "group/bar-hover:block hidden absolute left-0 top-full z-10 w-16em p-2 bg-white border shadow"}
+     (let [counts (frequencies rating-values)]
+       (for [rating ratings/ratings]
+         ^{:key rating}
+         [:div {:tw "flex items-center gap-1 text-sm"}
+          [(spreadsheet/rating->icon rating) {:tw "w-3 h-3"
+                                              :style {:color (spreadsheet/rating->color rating)}}]
+          [:span {:tw "grow"} (spreadsheet/rating->label rating)]
+          [:span {:tw "tabular-nums text-gray-500"} (or (counts rating) 0)]]))]]
    [:a {:tw "grow underline text-sm truncate"
         :href url
         :target "_blank"
         :rel "noopener noreferrer"}
     name]
-   ;; hover-over rating breakdown, echoing spreadsheet's rating legend
-   [:div {:tw "hidden group-hover:block absolute right-0 top-full z-10 w-16em p-2 bg-white border shadow"}
-    (let [counts (frequencies rating-values)]
-      (for [rating ratings/ratings]
-        ^{:key rating}
-        [:div {:tw "flex items-center gap-1 text-sm"}
-         [(spreadsheet/rating->icon rating) {:tw "w-3 h-3"
-                                             :style {:color (spreadsheet/rating->color rating)}}]
-         [:span {:tw "grow"} (spreadsheet/rating->label rating)]
-         [:span {:tw "tabular-nums text-gray-500"} (or (counts rating) 0)]]))]])
+   ;; hovering the whole line reveals vote options, as in the spreadsheet popover
+   [:div {:tw "inline-flex items-center gap-1 ml-auto shrink-0"}
+    (for [value ratings/ratings]
+      ^{:key value}
+      [:div {:tw "invisible group-hover:visible"}
+       [common/icon-button
+        {:icon (spreadsheet/rating->icon value)
+         :on-click (fn []
+                     ;; TODO wire to a real :rating/resource + :rating/outcome save
+                     ;; once this section is backed by real schema data
+                     nil)}]])]])
 
 (defn section-view
   [label & children]
@@ -218,9 +232,10 @@
                                                [?a :assertion/issued-by ?issuer]]
                                              (:user/id @state/user)
                                              badge-id)]
-    [:div {:tw "flex flex-col gap-4"}
+    [:div {:tw "flex flex-col"}
      ;; header: icon + group name + level
-     [:div {:tw "flex items-center gap-3 pb-4 border-b border-gray-200"}
+     [:div {:tw "flex items-center gap-3 p-4 text-white"
+            :style {:background (badges/color (:badge-group/id badge-group))}}
       [badges/badge-icon-view {:badge badge
                                :badge-states (state/badge-states
                                               @state/user-badges-states
@@ -231,7 +246,7 @@
         (:badge-group/name badge-group)
         " "
         (badges/level->roman (:badge/level badge))]
-       [:div {:tw "text-sm text-gray-500"} (:badge/name badge)]]]
+       [:div {:tw "text-sm opacity-80"} (:badge/name badge)]]]
 
      ;; ribbon: if the user already has it
      (when (and @state/user (seq current-user-assertion-ids))
@@ -245,97 +260,107 @@
 
      ;; actions
      (when @state/user
-       [:div {:tw "flex flex-wrap gap-2"}
-        (when (empty? current-user-assertion-ids)
-          [common/text-button
-           {:label "Grant to self"
-            :icon fa/fa-award-solid
-            :on-click (fn []
-                        (state/remote-do!
-                         [:api/grant-badge!
-                          {:target-user-id (:user/id @state/user)
-                           :badge-id badge-id}]))}])
+       [:div {:tw "flex flex-wrap gap-2 px-4 py-2"
+              :style {:background (badges/darker (:badge-group/id badge-group))}}
+
         [common/text-button
-         {:variant :secondary
+         {:variant :ghost
           :label (if current-user-working-towards?
-                   "Remove from working towards"
-                   "Add to working towards")
+                   "Remove from Working Towards"
+                   "Add to Working Towards")
           :on-click (fn []
                       (state/remote-do!
                        [:api/update-working-towards-badge!
                         {:badge-id badge-id
                          :add? (not current-user-working-towards?)}]))}]
         [common/text-button
-         {:variant :secondary
+         {:variant :ghost
           :label (if current-user-in-progress?
-                   "Remove from in-progress"
-                   "Add to in-progress")
+                   "Remove from In-Progress"
+                   "Add to In-Progress")
           :on-click (fn []
                       (state/remote-do!
                        [:api/update-in-progress-badge!
                         {:badge-id badge-id
                          :add? (not current-user-in-progress?)}]))}]
+
+        (when (empty? current-user-assertion-ids)
+          [common/text-button
+           {:variant :ghost
+            :label "Grant to Self"
+            :icon fa/fa-award-solid
+            :on-click (fn []
+                        (when (js/confirm "Are you sure you want to grant this badge to yourself?")
+                          (state/remote-do!
+                           [:api/grant-badge!
+                            {:target-user-id (:user/id @state/user)
+                             :badge-id badge-id}])))}])
+
         [grant-to-other-user-view badge-id]])
 
-     ;; description of the skill / knowledge
-     (when (:badge/description badge)
-       [section-view "About"
-        [:div {:tw "text-sm"} (:badge/description badge)]])
+     [:div {:tw "space-y-4 p-4"}
 
-     ;; description
-     [section-view "Description"
-      [:div {:tw "text-sm"} fake-description]]
+      ;; description of the skill / knowledge
+      (when (:badge/description badge)
+        [section-view "About"
+         [:div {:tw "text-sm"} (:badge/description badge)]])
 
-     ;; sample interview questions
-     [section-view "Sample interview questions"
-      [:ul {:tw "list-disc list-inside text-sm flex flex-col gap-1"}
-       (for [question fake-interview-questions]
-         ^{:key question}
-         [:li question])]]
+      ;; description
+      [section-view "Description"
+       [:div {:tw "text-sm"} fake-description]]
 
-     ;; projects to prove the badge
-     [section-view "Projects to prove this badge"
-      [:ul {:tw "list-disc list-inside text-sm flex flex-col gap-1"}
-       (for [project fake-projects]
-         ^{:key project}
-         [:li project])]]
+      ;; sample interview questions
+      [section-view "Sample interview questions"
+       [:ul {:tw "list-disc pl-5 text-sm flex flex-col gap-1"}
+        (for [question fake-interview-questions]
+          ^{:key question}
+          [:li question])]]
 
-     ;; resources
-     [section-view "Resources"
-      [:div {:tw "flex flex-col gap-1"}
-       (for [resource fake-resources]
-         ^{:key (:resource/id resource)}
-         [resource-rating-view resource])]]
+      ;; projects to prove the badge
+      [section-view "Projects to prove this badge"
+       [:ul {:tw "list-disc pl-5 text-sm flex flex-col gap-1"}
+        (for [project fake-projects]
+          ^{:key project}
+          [:li project])]]
 
-     ;; related badges
-     [section-view "Related badges"
-      [:div {:tw "flex flex-col gap-2"}
-       (when next-in-group-id
-         [:div
-          [:div {:tw "text-xs text-gray-500 mb-1"} "Next in group"]
-          [badges/badge-pill-view next-in-group-id]])
-       (when (seq prerequisite-ids)
-         [:div
-          [:div {:tw "text-xs text-gray-500 mb-1"} "Prerequisites"]
-          [:div {:tw "flex flex-wrap gap-1"}
-           (for [prerequisite-id prerequisite-ids]
-             ^{:key prerequisite-id}
-             [badges/badge-pill-view prerequisite-id])]])
-       (when (seq leads-to-ids)
-         [:div
-          [:div {:tw "text-xs text-gray-500 mb-1"} "Leads to"]
-          [:div {:tw "flex flex-wrap gap-1"}
-           (for [leads-to-id leads-to-ids]
-             ^{:key leads-to-id}
-             [badges/badge-pill-view leads-to-id])]])]]
+      ;; resources
+      [section-view "Resources"
+       ;; nested named groups aren't supported by our girouette version, create our own:
+       [:style ".group\\/bar:hover .group\\/bar-hover\\:block {display:block}"]
+       [:div {:tw "flex flex-col gap-1"}
+        (for [resource fake-resources]
+          ^{:key (:resource/id resource)}
+          [resource-rating-view resource])]]
 
-     ;; others with the badge
-     [section-view "Others with this badge"
-      [:div {:tw "flex flex-col gap-1"}
-       (for [user-name fake-other-user-names]
-         ^{:key user-name}
-         [:div {:tw "flex items-center gap-2 text-sm"}
-          [common/avatar-view {:name user-name
-                               :tw "w-6 h-6 text-xs"}]
-          user-name])]]]))
+      ;; related badges
+      [section-view "Related badges"
+       [:div {:tw "flex flex-col gap-2"}
+        (when next-in-group-id
+          [:div
+           [:div {:tw "text-xs text-gray-500 mb-1"} "Next in group"]
+           [badges/badge-pill-view next-in-group-id]])
+        (when (seq prerequisite-ids)
+          [:div
+           [:div {:tw "text-xs text-gray-500 mb-1"} "Prerequisites"]
+           [:div {:tw "flex flex-wrap gap-1"}
+            (for [prerequisite-id prerequisite-ids]
+              ^{:key prerequisite-id}
+              [badges/badge-pill-view prerequisite-id])]])
+        (when (seq leads-to-ids)
+          [:div
+           [:div {:tw "text-xs text-gray-500 mb-1"} "Leads to"]
+           [:div {:tw "flex flex-wrap gap-1"}
+            (for [leads-to-id leads-to-ids]
+              ^{:key leads-to-id}
+              [badges/badge-pill-view leads-to-id])]])]]
+
+      ;; others with the badge
+      [section-view "Others with this badge"
+       [:div {:tw "flex flex-col gap-1"}
+        (for [user-name fake-other-user-names]
+          ^{:key user-name}
+          [:div {:tw "flex items-center gap-1 text-sm"}
+           [common/avatar-view {:name user-name
+                                :tw "w-6 h-6 text-xs"}]
+           user-name])]]]]))
 
